@@ -30,6 +30,46 @@ import {
     ArrowUpRight,
 } from 'lucide-react';
 
+// Helper to parse gold details string (e.g. "1 Sovereign", "8 gram", "2 சவரன்") to Sovereign (சவரன்)
+const parseGoldToSovereign = (details) => {
+    if (!details) return 0;
+    
+    // Normalize string: convert to lowercase, replace Tamil words/characters
+    let str = details.toLowerCase()
+        .replace(/சவரன்|சவன்|சவ/g, 'sovereign')
+        .replace(/கிராம்|கி/g, 'gram');
+        
+    let totalSovereigns = 0;
+    let foundMatch = false;
+    
+    // 1. Find all sovereign matches, e.g. "1.5 sovereign", "2 sovereign"
+    const sovRegex = /([0-9]*\.?[0-9]+)\s*(sovereign|savaran|pavan|poun|savar)/g;
+    let match;
+    while ((match = sovRegex.exec(str)) !== null) {
+        totalSovereigns += parseFloat(match[1]);
+        foundMatch = true;
+    }
+    
+    // 2. Find all gram matches, e.g. "8 gram", "4g"
+    const gramRegex = /([0-9]*\.?[0-9]+)\s*(gram|gm|g\b)/g;
+    while ((match = gramRegex.exec(str)) !== null) {
+        totalSovereigns += parseFloat(match[1]) / 8; // 8 grams = 1 sovereign
+        foundMatch = true;
+    }
+    
+    // 3. Fallback: if no text keywords matched, but there's a simple number (e.g. "2" or "0.5")
+    if (!foundMatch) {
+        const fallbackRegex = /\b([0-9]*\.?[0-9]+)\b/g;
+        while ((match = fallbackRegex.exec(str)) !== null) {
+            // Assume single numbers stand for sovereigns
+            totalSovereigns += parseFloat(match[1]);
+            foundMatch = true;
+        }
+    }
+    
+    return totalSovereigns;
+};
+
 export const DashboardView = ({
     event,
     transactions,
@@ -68,6 +108,9 @@ export const DashboardView = ({
     const totalGivenMoiAmount = givenEntries.reduce((acc, g) => acc + Number(g.amount || 0), 0);
     const totalGivenMoiCount = givenEntries.length;
     const totalGivenMoiVillagesCount = new Set(givenEntries.map(g => g.village).filter(Boolean)).size;
+    const totalGivenGoldSovereigns = givenEntries
+        .filter(g => g.giftType === 'Gold')
+        .reduce((acc, g) => acc + parseGoldToSovereign(g.goldDetails), 0);
 
     // Village Leaderboard Map
     const villageMap = {};
@@ -238,7 +281,7 @@ export const DashboardView = ({
             </div>
 
             {/* 📊 GIVEN MOI KPI GRID 📊 */}
-            <div className="kpi-3-col-grid mb-4">
+            <div className="kpi-4-col-grid mb-4">
                 {/* 1. Total Sent Amount */}
                 <div className="kpi-card glass-card gold-kpi" style={{ cursor: 'pointer' }} onClick={() => onNavigate('given_moi')}>
                     <div className="kpi-top">
@@ -267,6 +310,18 @@ export const DashboardView = ({
                     </div>
                     <h2 className="kpi-value">{totalGivenMoiVillagesCount} Villages</h2>
                     <span className="kpi-foot font-tamil">மொய் செய்த ஊர்கள்</span>
+                </div>
+
+                {/* 4. Total Sent Gold Sovereigns */}
+                <div className="kpi-card glass-card amber-kpi" style={{ cursor: 'pointer' }} onClick={() => onNavigate('given_moi')}>
+                    <div className="kpi-top">
+                        <span className="kpi-title">Total Gold Given</span>
+                        <div className="kpi-icon-bg amber-icon"><Coins size={18} /></div>
+                    </div>
+                    <h2 className="kpi-value text-gold">
+                        {totalGivenGoldSovereigns % 1 === 0 ? totalGivenGoldSovereigns : totalGivenGoldSovereigns.toFixed(2)} Savaran
+                    </h2>
+                    <span className="kpi-foot font-tamil">செய்யப்பட்ட மொத்த பொன் (சவரன்)</span>
                 </div>
             </div>
 
