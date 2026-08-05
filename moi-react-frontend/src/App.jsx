@@ -531,6 +531,7 @@ export function App() {
                             event={activeEvent}
                             transactions={transactions}
                             goldEntries={goldEntries}
+                            givenEntries={givenEntries}
                             onNavigate={setActiveView}
                             onOpenCreateEvent={handleOpenCreateEvent}
                             onOpenAddCash={() => setActiveView('moi')}

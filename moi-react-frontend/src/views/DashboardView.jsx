@@ -35,6 +35,7 @@ export const DashboardView = ({
     event,
     transactions,
     goldEntries,
+    givenEntries = [],
     onNavigate,
     onOpenCreateEvent,
 }) => {
@@ -64,6 +65,11 @@ export const DashboardView = ({
 
     // Highest Single Cash Gift
     const highestTx = [...transactions].sort((a, b) => Number(b.amount) - Number(a.amount))[0];
+
+    // Given Moi Calculations
+    const totalGivenMoiAmount = givenEntries.reduce((acc, g) => acc + Number(g.amount || 0), 0);
+    const totalGivenMoiCount = givenEntries.length;
+    const totalGivenMoiVillagesCount = new Set(givenEntries.map(g => g.village).filter(Boolean)).size;
 
     // Village Leaderboard Map
     const villageMap = {};
@@ -148,6 +154,15 @@ export const DashboardView = ({
 
     return (
         <div className="view-content fade-in">
+            {/* 📥 INBOUND COLLECTIONS SUMMARY 📥 */}
+            <div className="card-header-flex mb-3">
+                <div className="title-block">
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-header)', display: 'flex', alignItems: 'center', gap: '0.45rem', margin: 0 }}>
+                        <Sparkles size={16} className="text-purple" /> Collections Summary (பெறப்பட்ட மொய் விபரம்)
+                    </h3>
+                </div>
+            </div>
+
             {/* 📊 COMPACT 3-COLUMN KPI METRIC GRID 📊 */}
             <div className="kpi-3-col-grid mb-4">
                 {/* 1. Total Cash */}
@@ -212,6 +227,48 @@ export const DashboardView = ({
                     </div>
                     <h2 className="kpi-value text-truncate">{topVillageLeader.name}</h2>
                     <span className="kpi-foot">₹ {topVillageLeader.total.toLocaleString('en-IN')} Collection</span>
+                </div>
+            </div>
+
+            {/* 📤 OUTBOUND GIFTS SUMMARY 📤 */}
+            <div className="card-header-flex mb-3 mt-4">
+                <div className="title-block">
+                    <h3 style={{ fontSize: '1.05rem', fontWeight: 800, color: 'var(--text-header)', display: 'flex', alignItems: 'center', gap: '0.45rem', margin: 0 }}>
+                        <TrendingUp size={16} className="text-gold" /> Given Gifts Summary (நாம் செய்த மொய் விபரம்)
+                    </h3>
+                </div>
+            </div>
+
+            {/* 📊 GIVEN MOI KPI GRID 📊 */}
+            <div className="kpi-3-col-grid mb-4">
+                {/* 1. Total Sent Amount */}
+                <div className="kpi-card glass-card gold-kpi" style={{ cursor: 'pointer' }} onClick={() => onNavigate('given_moi')}>
+                    <div className="kpi-top">
+                        <span className="kpi-title">Total Amount Sent</span>
+                        <div className="kpi-icon-bg gold-icon"><IndianRupee size={18} /></div>
+                    </div>
+                    <h2 className="kpi-value text-gold">₹ {totalGivenMoiAmount.toLocaleString('en-IN')}</h2>
+                    <span className="kpi-foot font-tamil">நாம் செய்த மொத்த மொய்</span>
+                </div>
+
+                {/* 2. Total Sent Count */}
+                <div className="kpi-card glass-card purple-kpi" style={{ cursor: 'pointer' }} onClick={() => onNavigate('given_moi')}>
+                    <div className="kpi-top">
+                        <span className="kpi-title">Total Gifts Sent</span>
+                        <div className="kpi-icon-bg purple-icon"><Coins size={18} /></div>
+                    </div>
+                    <h2 className="kpi-value text-purple">{totalGivenMoiCount} Gifts</h2>
+                    <span className="kpi-foot font-tamil">மொய் செய்த முறை</span>
+                </div>
+
+                {/* 3. Total Sent Villages */}
+                <div className="kpi-card glass-card blue-kpi" style={{ cursor: 'pointer' }} onClick={() => onNavigate('given_moi')}>
+                    <div className="kpi-top">
+                        <span className="kpi-title">Total Villages Visited</span>
+                        <div className="kpi-icon-bg blue-icon"><MapPin size={18} /></div>
+                    </div>
+                    <h2 className="kpi-value">{totalGivenMoiVillagesCount} Villages</h2>
+                    <span className="kpi-foot font-tamil">மொய் செய்த ஊர்கள்</span>
                 </div>
             </div>
 
