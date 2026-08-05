@@ -69,8 +69,15 @@ public class GivenMoiService : IGivenMoiService
         var entry = await _context.GivenMoiEntries.FindAsync(id);
         if (entry != null)
         {
-            _context.GivenMoiEntries.Remove(entry);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.GivenMoiEntries.Remove(entry);
+                await _context.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+            {
+                // Already deleted
+            }
         }
     }
 

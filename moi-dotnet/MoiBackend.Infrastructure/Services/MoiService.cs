@@ -46,8 +46,15 @@ public class MoiService : IMoiService
         var evt = await _dbContext.Events.FindAsync(eventId);
         if (evt != null)
         {
-            _dbContext.Events.Remove(evt);
-            await _dbContext.SaveChangesAsync();
+            try
+            {
+                _dbContext.Events.Remove(evt);
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+            {
+                // Already deleted
+            }
         }
     }
 
@@ -139,8 +146,15 @@ public class MoiService : IMoiService
         var tx = await _dbContext.MoiTransactions.FindAsync(transactionId);
         if (tx != null)
         {
-            _dbContext.MoiTransactions.Remove(tx);
-            await _dbContext.SaveChangesAsync();
+            try
+            {
+                _dbContext.MoiTransactions.Remove(tx);
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+            {
+                // Already deleted
+            }
         }
     }
 

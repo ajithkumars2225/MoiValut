@@ -171,8 +171,15 @@ public class ConflictService : IConflictService
         var record = await _context.ConflictRecords.FindAsync(id);
         if (record != null)
         {
-            _context.ConflictRecords.Remove(record);
-            await _context.SaveChangesAsync();
+            try
+            {
+                _context.ConflictRecords.Remove(record);
+                await _context.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+            {
+                // Already deleted
+            }
         }
     }
 

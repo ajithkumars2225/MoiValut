@@ -109,8 +109,15 @@ public class GoldEntryService : IGoldEntryService
         var entry = await _dbContext.GoldEntries.FindAsync(id);
         if (entry != null)
         {
-            _dbContext.GoldEntries.Remove(entry);
-            await _dbContext.SaveChangesAsync();
+            try
+            {
+                _dbContext.GoldEntries.Remove(entry);
+                await _dbContext.SaveChangesAsync();
+            }
+            catch (Microsoft.EntityFrameworkCore.DbUpdateConcurrencyException)
+            {
+                // Already deleted
+            }
         }
     }
 
