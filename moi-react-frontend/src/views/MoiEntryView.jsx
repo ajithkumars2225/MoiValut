@@ -833,7 +833,12 @@ export const MoiEntryView = ({
                 onClose={() => setIsBulkModalOpen(false)}
                 onImport={async (data) => {
                     await onRecordMoi({
-                        ...data,
+                        contributorName: data.name,
+                        village: data.village,
+                        amount: Number(data.amount || 0),
+                        giftTerm: data.giftTerm || '1st Time',
+                        returnAmount: Number(data.returnAmount || 0),
+                        notes: data.notes || '',
                         eventId: event.id
                     });
                 }}

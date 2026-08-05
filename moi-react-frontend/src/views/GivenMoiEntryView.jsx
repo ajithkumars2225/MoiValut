@@ -795,7 +795,15 @@ export const GivenMoiEntryView = ({
                 onClose={() => setIsBulkModalOpen(false)}
                 onImport={async (data) => {
                     await onRecordGivenMoi({
-                        ...data,
+                        recipientName: data.name,
+                        village: data.village,
+                        giftType: data.giftType || 'Cash',
+                        goldDetails: data.goldDetails || '',
+                        amount: Number(data.amount || 0),
+                        occasion: data.occasion || 'மற்றவை',
+                        giftTerm: data.giftTerm || '1st Time',
+                        givenDate: data.givenDate ? new Date(data.givenDate).toISOString() : new Date().toISOString(),
+                        notes: data.notes || '',
                         eventId: event.id
                     });
                 }}
