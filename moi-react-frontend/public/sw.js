@@ -34,8 +34,18 @@ self.addEventListener('activate', (event) => {
 
 // Fetch: Serve from cache, fallback to network
 self.addEventListener('fetch', (event) => {
-  // Only handle GET requests for assets, ignore API calls (handled in api.js)
-  if (event.request.method !== 'GET' || event.request.url.includes('/api/')) {
+  // Only handle GET requests
+  if (event.request.method !== 'GET') {
+    return;
+  }
+
+  // Only handle http/https requests (ignore chrome-extension, chrome-error, etc.)
+  if (!event.request.url.startsWith('http')) {
+    return;
+  }
+
+  // Do not intercept API requests
+  if (event.request.url.includes('/api/')) {
     return;
   }
 
@@ -47,25 +57,29 @@ self.addEventListener('fetch', (event) => {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then((cache) => cache.put(event.request, networkResponse));
           }
-        }).catch(() => {/* Ignore network errors */});
+        }).catch(() => {/* Ignore network errors in background fetch */});
         
         return cachedResponse;
       }
 
       return fetch(event.request).then((networkResponse) => {
-        // Cache dynamic assets (JS, CSS, images)
-        if (networkResponse && networkResponse.status === 200) {
+        // Cache dynamic assets (JS, CSS, images, Web fonts)
+        if (networkResponse && (networkResponse.status === 200 || networkResponse.status === 0)) {
           const responseToCache = networkResponse.clone();
           caches.open(CACHE_NAME).then((cache) => {
-            cache.put(event.request, responseToCache);
+            cache.put(event.request, responseToCache).catch((err) => {
+              console.warn('Cache write ignored:', err);
+            });
           });
         }
         return networkResponse;
-      }).catch(() => {
+      }).catch((err) => {
         // Fallback for navigation (SPA routing)
         if (event.request.mode === 'navigate') {
           return caches.match('/index.html');
         }
+        // Rethrow the error so that the browser treats it as a standard network failure (no TypeError)
+        throw err;
       });
     })
   );
