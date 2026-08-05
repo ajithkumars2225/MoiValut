@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React from 'react';
 import {
     ResponsiveContainer,
     AreaChart,
@@ -29,7 +29,6 @@ import {
     Printer,
     ArrowUpRight,
 } from 'lucide-react';
-import { ReceiptModal } from '../components/ReceiptModal';
 
 export const DashboardView = ({
     event,
@@ -39,7 +38,6 @@ export const DashboardView = ({
     onNavigate,
     onOpenCreateEvent,
 }) => {
-    const [selectedReceipt, setSelectedReceipt] = useState(null);
 
     if (!event) {
         return (
@@ -394,77 +392,6 @@ export const DashboardView = ({
                 </div>
             </div>
 
-            {/* 👑 COMPACT HIGHEST CONTRIBUTORS WALL OF FAME 👑 */}
-            <div className="full-width-card glass-card mb-4">
-                <div className="card-header-flex">
-                    <div className="title-block">
-                        <div className="badge-icon-purple">
-                            <Sparkles size={18} className="text-gold" />
-                        </div>
-                        <div>
-                            <h2>Highest Contributors Wall of Fame (உயர்ந்த மொய் வழங்கியோர்)</h2>
-                            <p className="subtitle">Top 5 highest cash contributions for {event.name}</p>
-                        </div>
-                    </div>
-
-                    <button className="btn-text" onClick={() => onNavigate('moi')}>
-                        View All Entries <ArrowUpRight size={15} />
-                    </button>
-                </div>
-
-                <div className="table-responsive mt-3">
-                    <table className="custom-table modern-table compact-table">
-                        <thead>
-                            <tr>
-                                <th>Rank</th>
-                                <th>Name (பெயர்)</th>
-                                <th>Village (ஊர்)</th>
-                                <th>Amount (தொகை ₹)</th>
-                                <th className="text-right">Receipt</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {topContributorsWall.length === 0 ? (
-                                <tr>
-                                    <td colSpan="5" className="text-center text-muted py-4">
-                                        No cash entries recorded yet.
-                                    </td>
-                                </tr>
-                            ) : (
-                                topContributorsWall.map((tx, idx) => (
-                                    <tr key={tx.transactionId} className="table-row-hover">
-                                        <td>
-                                            <span className={`rank-pill rank-${idx + 1}`}>
-                                                {idx === 0 ? '👑 #1' : `#${idx + 1}`}
-                                            </span>
-                                        </td>
-                                        <td className="font-semibold">{tx.contributorName}</td>
-                                        <td><span className="badge-village">{tx.village || '-'}</span></td>
-                                        <td className="amount-col">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>
-                                        <td className="text-right">
-                                            <button
-                                                className="action-btn btn-print"
-                                                title="Print Receipt"
-                                                onClick={() => setSelectedReceipt(tx)}
-                                            >
-                                                <Printer size={14} />
-                                            </button>
-                                        </td>
-                                    </tr>
-                                ))
-                            )}
-                        </tbody>
-                    </table>
-                </div>
-            </div>
-
-            {/* Receipt Modal */}
-            <ReceiptModal
-                isOpen={!!selectedReceipt}
-                onClose={() => setSelectedReceipt(null)}
-                data={selectedReceipt}
-                eventName={event.name}
-            />
         </div>
     );
 };
