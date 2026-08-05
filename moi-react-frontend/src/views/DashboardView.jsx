@@ -100,7 +100,9 @@ export const DashboardView = ({
     const givens = Array.isArray(givenEntries) ? givenEntries : [];
 
     // Financial Calculations
-    const totalCash = txs.reduce((acc, t) => acc + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
+    const totalReceivedMoiOnly = txs.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const totalReturnMoiOnly = txs.reduce((acc, t) => acc + Number(t.returnAmount || 0), 0);
+    const totalCash = totalReceivedMoiOnly + totalReturnMoiOnly;
     const totalContributorsCount = new Set([
         ...txs.map((t) => `${t.contributorName}-${t.village}`),
         ...golds.map((g) => `${g.contributorName}-${g.village}`),
@@ -223,8 +225,18 @@ export const DashboardView = ({
                         <span className="kpi-title">Total Cash Collected</span>
                         <div className="kpi-icon-bg purple-icon"><IndianRupee size={18} /></div>
                     </div>
-                    <h2 className="kpi-value text-purple">₹ {totalCash.toLocaleString('en-IN')}</h2>
-                    <span className="kpi-foot font-tamil">மொத்த பண மொய்</span>
+                    <h2 className="kpi-value text-purple" style={{ fontSize: '1.65rem' }}>₹ {totalCash.toLocaleString('en-IN')}</h2>
+                    <span className="kpi-foot font-tamil" style={{ marginBottom: '0.4rem' }}>மொத்த பண வரவு</span>
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: '0.2rem', fontSize: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)', paddingTop: '0.4rem', opacity: 0.85 }}>
+                        <div className="flex-align justify-between">
+                            <span style={{ color: '#A78BFA' }}>Puthu (புதிய மொய்):</span>
+                            <strong className="text-emerald-400">₹ {totalReceivedMoiOnly.toLocaleString('en-IN')}</strong>
+                        </div>
+                        <div className="flex-align justify-between">
+                            <span style={{ color: '#A78BFA' }}>Potta (திரும்பியது):</span>
+                            <strong className="text-amber-400">₹ {totalReturnMoiOnly.toLocaleString('en-IN')}</strong>
+                        </div>
+                    </div>
                 </div>
 
                 {/* 2. Total Contributors */}

@@ -171,9 +171,13 @@ export const MoiEntryView = ({
         return filteredTransactions.slice(startIndex, startIndex + pageSize);
     }, [filteredTransactions, currentPage, pageSize, groupBy]);
 
-    const totalCash = transactions.reduce((sum, t) => sum + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
+    const totalReceivedOnly = transactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
     const totalReturnCash = transactions.reduce((sum, t) => sum + Number(t.returnAmount || 0), 0);
-    const filteredCash = filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
+    const totalCash = totalReceivedOnly + totalReturnCash;
+
+    const filteredReceivedOnly = filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const filteredReturnOnly = filteredTransactions.reduce((sum, t) => sum + Number(t.returnAmount || 0), 0);
+    const filteredCash = filteredReceivedOnly + filteredReturnOnly;
 
     const handleResetFilters = () => {
         setSearchQuery('');
@@ -449,7 +453,12 @@ export const MoiEntryView = ({
                         <div className="title-text-wrap">
                             <h2 className="header-title-sm">Moi Cash Gifts (பண மொய் பட்டியல்)</h2>
                             <span className="collection-pill-sm">
-                                Total Collection: <strong className="text-emerald">₹ {totalCash.toLocaleString('en-IN')}</strong> • Prev Returned: <strong className="text-gold">₹ {totalReturnCash.toLocaleString('en-IN')}</strong> ({transactions.length} Entries)
+                                <span>புதிய மொய்: <strong className="text-emerald">₹ {totalReceivedOnly.toLocaleString('en-IN')}</strong></span>
+                                <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>|</span>
+                                <span>திரும்பியது (பொட்ட மொய்): <strong className="text-gold">₹ {totalReturnCash.toLocaleString('en-IN')}</strong></span>
+                                <span style={{ margin: '0 0.4rem', opacity: 0.3 }}>|</span>
+                                <span>மொத்த வரவு: <strong style={{ color: '#C084FC' }}>₹ {totalCash.toLocaleString('en-IN')}</strong></span>
+                                <span style={{ marginLeft: '0.4rem', opacity: 0.7 }}>({transactions.length} பதிவுகள்)</span>
                             </span>
                         </div>
                     </div>
@@ -602,8 +611,14 @@ export const MoiEntryView = ({
 
                         {/* Filter Status Summary Bar & Reset Action */}
                         <div className="filter-summary-row mt-3 flex-align justify-between">
-                            <span className="summary-text-sm">
-                                Showing <strong>{filteredTransactions.length}</strong> of {transactions.length} entries • Filtered Subtotal: <strong className="text-emerald">₹ {filteredCash.toLocaleString('en-IN')}</strong>
+                            <span className="summary-text-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                                Showing <strong>{filteredTransactions.length}</strong> of {transactions.length} entries
+                                <span style={{ opacity: 0.3 }}>•</span>
+                                <span>புதிய மொய்: <strong className="text-emerald">₹ {filteredReceivedOnly.toLocaleString('en-IN')}</strong></span>
+                                <span style={{ opacity: 0.3 }}>|</span>
+                                <span>திரும்பியது: <strong className="text-gold">₹ {filteredReturnOnly.toLocaleString('en-IN')}</strong></span>
+                                <span style={{ opacity: 0.3 }}>|</span>
+                                <span>மொத்தம்: <strong style={{ color: '#C084FC' }}>₹ {filteredCash.toLocaleString('en-IN')}</strong></span>
                             </span>
 
                             <button className="reset-btn-sm" onClick={handleResetFilters}>

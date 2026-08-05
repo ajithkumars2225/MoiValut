@@ -58,12 +58,14 @@ export const EventsView = ({
         const evtGiven = givenEntries.filter((g) => g.eventId === eventId);
         const evtGold = goldEntries.filter((ge) => ge.eventId === eventId);
 
-        const totalCash = evtTx.reduce((sum, t) => sum + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
+        const totalReceived = evtTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const totalReturned = evtTx.reduce((sum, t) => sum + Number(t.returnAmount || 0), 0);
+        const totalCash = totalReceived + totalReturned;
         const totalGiven = evtGiven.reduce((sum, g) => sum + Number(g.amount || 0), 0);
         const totalGoldCount = evtGold.length;
         const totalGuests = evtTx.length;
 
-        return { totalCash, totalGiven, totalGoldCount, totalGuests };
+        return { totalCash, totalReceived, totalReturned, totalGiven, totalGoldCount, totalGuests };
     };
 
     // Quick Invitation Upload trigger
@@ -321,26 +323,32 @@ export const EventsView = ({
                                         </div>
                                     </div>
 
-                                    {/* 📊 MINI STATS GRID (3 SUMMARY BOXES) */}
+                                    {/* 📊 MINI STATS GRID (4-COLUMN LAYOUT FOR DETAILED BREAKDOWN) */}
                                     <div style={{
-                                        display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: '0.5rem',
+                                        display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: '0.4rem',
                                         marginTop: '0.3rem', paddingTop: '0.75rem', borderTop: '1px solid rgba(255,255,255,0.08)'
                                     }}>
-                                        {/* Cash Received */}
+                                        {/* Cash Received Breakdown */}
                                         <div style={{
-                                            background: 'rgba(16,185,129,0.08)', border: '1px solid rgba(16,185,129,0.2)',
-                                            borderRadius: '10px', padding: '0.5rem', textAlign: 'center'
+                                            background: 'rgba(16,185,129,0.05)', border: '1px solid rgba(16,185,129,0.15)',
+                                            borderRadius: '8px', padding: '0.4rem 0.2rem', textAlign: 'center', gridColumn: 'span 2',
+                                            display: 'flex', flexDirection: 'column', justifyContent: 'center'
                                         }}>
-                                            <div style={{ fontSize: '0.65rem', color: '#9CA3AF', marginBottom: 2 }}>வந்த பணம்</div>
+                                            <div style={{ fontSize: '0.65rem', color: '#9CA3AF', marginBottom: 2 }}>மொத்த வரவு</div>
                                             <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#34D399' }}>
                                                 ₹{stats.totalCash.toLocaleString('en-IN')}
+                                            </div>
+                                            <div style={{ fontSize: '0.6rem', color: 'rgba(255,255,255,0.5)', marginTop: 2, display: 'flex', justifyContent: 'center', gap: '0.4rem' }}>
+                                                <span>புதிய: ₹{stats.totalReceived.toLocaleString('en-IN')}</span>
+                                                <span>பழைய: ₹{stats.totalReturned.toLocaleString('en-IN')}</span>
                                             </div>
                                         </div>
 
                                         {/* Given Moi */}
                                         <div style={{
-                                            background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.2)',
-                                            borderRadius: '10px', padding: '0.5rem', textAlign: 'center'
+                                            background: 'rgba(139,92,246,0.05)', border: '1px solid rgba(139,92,246,0.15)',
+                                            borderRadius: '8px', padding: '0.4rem 0.2rem', textAlign: 'center',
+                                            display: 'flex', flexDirection: 'column', justifyContent: 'center'
                                         }}>
                                             <div style={{ fontSize: '0.65rem', color: '#9CA3AF', marginBottom: 2 }}>செய்த மொய்</div>
                                             <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#A78BFA' }}>
@@ -350,8 +358,9 @@ export const EventsView = ({
 
                                         {/* Gold Gifts */}
                                         <div style={{
-                                            background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.2)',
-                                            borderRadius: '10px', padding: '0.5rem', textAlign: 'center'
+                                            background: 'rgba(245,158,11,0.05)', border: '1px solid rgba(245,158,11,0.15)',
+                                            borderRadius: '8px', padding: '0.4rem 0.2rem', textAlign: 'center',
+                                            display: 'flex', flexDirection: 'column', justifyContent: 'center'
                                         }}>
                                             <div style={{ fontSize: '0.65rem', color: '#9CA3AF', marginBottom: 2 }}>பொன் வரவு</div>
                                             <div style={{ fontSize: '0.85rem', fontWeight: 800, color: '#FBBF24' }}>
