@@ -100,14 +100,17 @@ export const DashboardView = ({
     const givens = Array.isArray(givenEntries) ? givenEntries : [];
 
     // Financial Calculations
-    const totalCash = txs.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const totalCash = txs.reduce((acc, t) => acc + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
     const totalContributorsCount = new Set([
         ...txs.map((t) => `${t.contributorName}-${t.village}`),
         ...golds.map((g) => `${g.contributorName}-${g.village}`),
     ]).size;
 
-    // Highest Single Cash Gift
-    const highestTx = [...txs].sort((a, b) => Number(b.amount) - Number(a.amount))[0];
+    // Highest Single Cash Gift (sum of amount + returnAmount)
+    const highestTx = [...txs].sort((a, b) => 
+        (Number(b.amount || 0) + Number(b.returnAmount || 0)) - 
+        (Number(a.amount || 0) + Number(a.returnAmount || 0))
+    )[0];
 
     // Given Moi Calculations
     const totalGivenMoiAmount = givens.reduce((acc, g) => acc + Number(g.amount || 0), 0);
@@ -117,12 +120,12 @@ export const DashboardView = ({
         .filter(g => g.giftType === 'Gold')
         .reduce((acc, g) => acc + parseGoldToSovereign(g.goldDetails), 0);
 
-    // Village Leaderboard Map
+    // Village Leaderboard Map (includes both amount and returnAmount)
     const villageMap = {};
     const villageContributorsMap = {};
     txs.forEach((t) => {
         const v = t.village || 'Unspecified';
-        villageMap[v] = (villageMap[v] || 0) + Number(t.amount || 0);
+        villageMap[v] = (villageMap[v] || 0) + Number(t.amount || 0) + Number(t.returnAmount || 0);
         if (!villageContributorsMap[v]) villageContributorsMap[v] = new Set();
         villageContributorsMap[v].add(t.contributorName);
     });
@@ -138,19 +141,22 @@ export const DashboardView = ({
     const topVillageLeader = topVillagesList[0] || { name: '-', total: 0 };
     const totalVillagesCount = topVillagesList.length;
 
-    // Top 5 Cash Contributors Wall of Fame
+    // Top 5 Cash Contributors Wall of Fame (amount + returnAmount)
     const topContributorsWall = [...txs]
-        .sort((a, b) => Number(b.amount) - Number(a.amount))
+        .sort((a, b) => 
+            (Number(b.amount || 0) + Number(b.returnAmount || 0)) - 
+            (Number(a.amount || 0) + Number(a.returnAmount || 0))
+        )
         .slice(0, 5);
 
-    // Chart 1: Timeline Area Data
+    // Chart 1: Timeline Area Data (cumulative sum of amount + returnAmount)
     let cumulative = 0;
     const timelineData = txs.map((t, idx) => {
-        cumulative += Number(t.amount || 0);
+        cumulative += Number(t.amount || 0) + Number(t.returnAmount || 0);
         return {
             index: idx + 1,
             label: `#${t.serialNumber} ${t.contributorName}`,
-            amount: Number(t.amount || 0),
+            amount: Number(t.amount || 0) + Number(t.returnAmount || 0),
             cumulative: cumulative,
         };
     });
@@ -164,7 +170,7 @@ export const DashboardView = ({
         { name: 'Gold Gifts (பொன்)', value: golds.length, color: '#F59E0B' },
     ].filter((item) => item.value > 0);
 
-    // Chart 4: Amount Tier Distribution
+    // Chart 4: Amount Tier Distribution (based on amount + returnAmount)
     const tiers = {
         '< ₹500': 0,
         '₹501 - ₹2,000': 0,
@@ -173,7 +179,7 @@ export const DashboardView = ({
     };
 
     txs.forEach((t) => {
-        const amt = Number(t.amount || 0);
+        const amt = Number(t.amount || 0) + Number(t.returnAmount || 0);
         if (amt <= 500) tiers['< ₹500'] += 1;
         else if (amt <= 2000) tiers['₹501 - ₹2,000'] += 1;
         else if (amt <= 5000) tiers['₹2,001 - ₹5,000'] += 1;
@@ -248,7 +254,7 @@ export const DashboardView = ({
                         <div className="kpi-icon-bg gold-icon"><Crown size={18} /></div>
                     </div>
                     <h2 className="kpi-value text-gold">
-                        {highestTx ? `₹ ${Number(highestTx.amount).toLocaleString('en-IN')}` : '₹ 0'}
+                        {highestTx ? `₹ ${Number(Number(highestTx.amount || 0) + Number(highestTx.returnAmount || 0)).toLocaleString('en-IN')}` : '₹ 0'}
                     </h2>
                     <span className="kpi-foot text-truncate">
                         {highestTx ? `${highestTx.contributorName} (${highestTx.village || '-'})` : 'No entries yet'}
