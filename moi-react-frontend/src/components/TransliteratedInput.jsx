@@ -47,7 +47,7 @@ const BUILT_IN_DICT = {
     "revathi": "ரேவதி",
     "banu": "பானு",
     "vijay": "விஜய்",
-    "ajith": "அжит",
+    "ajith": "அஜித்",
     "surya": "சூர்யா",
     "vijayan": "விஜயன்",
     "kannan": "கண்ணன்",
@@ -167,6 +167,24 @@ export const TransliteratedInput = ({
         return () => document.removeEventListener('mousedown', handleClickOutside);
     }, []);
 
+    // Helper to safely read localStorage JSON arrays
+    const getCache = (key, defaultValue = []) => {
+        try {
+            const val = localStorage.getItem(key);
+            return val ? JSON.parse(val) : defaultValue;
+        } catch {
+            return defaultValue;
+        }
+    };
+
+    const setCache = (key, data) => {
+        try {
+            localStorage.setItem(key, JSON.stringify(data));
+        } catch (e) {
+            console.error('Failed to set cache', e);
+        }
+    };
+
     const fetchSuggestions = async (word) => {
         if (!word || !/^[a-zA-Z]+$/.test(word)) {
             setSuggestions([]);
@@ -174,7 +192,18 @@ export const TransliteratedInput = ({
             return;
         }
 
-        // 1. Try to fetch from Google Input Tools online
+        const lowercaseWord = word.toLowerCase();
+
+        // 1. Check if we have the EXACT word cached from Google Input Tools previously
+        const cachedTranslit = getCache('translit_' + lowercaseWord, null);
+        if (cachedTranslit && cachedTranslit.length > 0) {
+            setSuggestions(cachedTranslit);
+            setSelectedIndex(0);
+            setShowDropdown(true);
+            return;
+        }
+
+        // 2. Try to fetch from Google Input Tools online
         try {
             if (navigator.onLine) {
                 const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=ta-t-i0-und&num=5&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
@@ -186,6 +215,9 @@ export const TransliteratedInput = ({
                     setSuggestions(list);
                     setSelectedIndex(0);
                     setShowDropdown(list.length > 0);
+                    
+                    // Save exact suggestions returned by Google in localStorage
+                    setCache('translit_' + lowercaseWord, list);
                     return;
                 }
             }
@@ -193,24 +225,27 @@ export const TransliteratedInput = ({
             console.warn('Online transliteration failed, falling back to local dictionaries', e);
         }
 
-        // 2. Offline Fallback
-        const lowercaseWord = word.toLowerCase();
+        // 3. Offline fallback using dynamically harvested prefixes + static dictionary + phonetic rules
         const localMatches = [];
-
-        // Helper to safely read localStorage JSON arrays
-        const getCache = (key) => {
-            try {
-                const val = localStorage.getItem(key);
-                return val ? JSON.parse(val) : [];
-            } catch {
-                return [];
-            }
-        };
 
         // Offline: Generate basic phonetic Tamil guess
         const phoneticGuess = offlinePhoneticTranslate(word);
         if (phoneticGuess) {
             localMatches.push(phoneticGuess);
+        }
+
+        // Search sub-word prefixes from previously cached Google Translit keys
+        for (let i = 0; i < localStorage.length; i++) {
+            const key = localStorage.key(i);
+            if (key && key.startsWith('translit_')) {
+                const cachedEngWord = key.substring('translit_'.length);
+                if (cachedEngWord.startsWith(lowercaseWord)) {
+                    const recommendations = getCache(key, []);
+                    if (recommendations && recommendations[0]) {
+                        localMatches.push(recommendations[0]);
+                    }
+                }
+            }
         }
 
         // Static built-in common Tamil terms prefix matches
@@ -224,7 +259,7 @@ export const TransliteratedInput = ({
         const cachedNames = new Set();
         const cachedVillages = new Set();
 
-        // 1. Transactions Cache
+        // Received Transactions Cache
         for (let i = 0; i < localStorage.length; i++) {
             const key = localStorage.key(i);
             if (key && key.startsWith('cache_transactions_event_')) {
@@ -235,13 +270,13 @@ export const TransliteratedInput = ({
             }
         }
 
-        // 2. Given Moi Cache
+        // Given Moi Cache
         getCache('cache_given_moi').forEach(t => {
             if (t.recipientName) cachedNames.add(t.recipientName);
             if (t.village) cachedVillages.add(t.village);
         });
 
-        // 3. Villages list cache
+        // Villages list cache
         getCache('cache_villages').forEach(v => {
             if (v) cachedVillages.add(v);
         });
