@@ -58,7 +58,7 @@ export const EventsView = ({
         const evtGiven = givenEntries.filter((g) => g.eventId === eventId);
         const evtGold = goldEntries.filter((ge) => ge.eventId === eventId);
 
-        const totalCash = evtTx.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+        const totalCash = evtTx.reduce((sum, t) => sum + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
         const totalGiven = evtGiven.reduce((sum, g) => sum + Number(g.amount || 0), 0);
         const totalGoldCount = evtGold.length;
         const totalGuests = evtTx.length;

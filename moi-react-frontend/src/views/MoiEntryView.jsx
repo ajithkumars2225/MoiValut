@@ -156,7 +156,7 @@ export const MoiEntryView = ({
                 groups[key] = { key, items: [], totalAmount: 0 };
             }
             groups[key].items.push(tx);
-            groups[key].totalAmount += Number(tx.amount || 0);
+            groups[key].totalAmount += Number(tx.amount || 0) + Number(tx.returnAmount || 0);
         });
 
         return Object.values(groups).sort((a, b) => b.totalAmount - a.totalAmount);
@@ -171,9 +171,9 @@ export const MoiEntryView = ({
         return filteredTransactions.slice(startIndex, startIndex + pageSize);
     }, [filteredTransactions, currentPage, pageSize, groupBy]);
 
-    const totalCash = transactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const totalCash = transactions.reduce((sum, t) => sum + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
     const totalReturnCash = transactions.reduce((sum, t) => sum + Number(t.returnAmount || 0), 0);
-    const filteredCash = filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0), 0);
+    const filteredCash = filteredTransactions.reduce((sum, t) => sum + Number(t.amount || 0) + Number(t.returnAmount || 0), 0);
 
     const handleResetFilters = () => {
         setSearchQuery('');
