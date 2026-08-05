@@ -1,5 +1,58 @@
 import React, { useState, useRef } from 'react';
 import { Upload, FileText, Download, X, AlertCircle, CheckCircle2, Play } from 'lucide-react';
+import { offlinePhoneticTranslate, BUILT_IN_DICT } from '../TransliteratedInput';
+
+const INITIALS_MAP = {
+    'a': 'ஆ', 'aa': 'ஆ', 'b': 'பி', 'c': 'சி', 'd': 'டி', 'e': 'இ',
+    'f': 'எப்', 'g': 'ஜி', 'h': 'ஹெச்', 'i': 'ஐ', 'j': 'ஜே', 'k': 'கே',
+    'l': 'எல்', 'm': 'எம்', 'n': 'என்', 'o': 'ஓ', 'p': 'பி', 'q': 'கியூ',
+    'r': 'ஆர்', 's': 'எஸ்', 't': 'டி', 'u': 'யு', 'v': 'வி', 'w': 'டபிள்யூ',
+    'x': 'எக்ஸ்', 'y': 'ஒய்', 'z': 'இசட்', 'vai': 'வை'
+};
+
+const translateFullNameToTamil = (fullName) => {
+    if (!fullName) return "";
+    
+    // Only translate if it contains English letters
+    if (!/[a-zA-Z]/.test(fullName)) {
+        return fullName;
+    }
+
+    // Split by dot or space to preserve initials separators
+    const parts = fullName.split(/([.\s]+)/);
+    
+    const translatedParts = parts.map(part => {
+        if (/^[.\s]+$/.test(part)) {
+            return part;
+        }
+        
+        const lowercaseWord = part.toLowerCase().trim();
+        if (!lowercaseWord) return part;
+
+        // Check if it is a single-letter or known initials map entry (like AA or VAI)
+        if (INITIALS_MAP[lowercaseWord]) {
+            return INITIALS_MAP[lowercaseWord];
+        }
+
+        // Check exact match in static dictionary
+        if (BUILT_IN_DICT[lowercaseWord]) {
+            return BUILT_IN_DICT[lowercaseWord];
+        }
+        
+        // Check exact match in dynamic translit cache in localStorage
+        try {
+            const cachedList = JSON.parse(localStorage.getItem('translit_' + lowercaseWord));
+            if (cachedList && cachedList[0]) {
+                return cachedList[0];
+            }
+        } catch {}
+        
+        // Use syllable mapping fallback
+        return offlinePhoneticTranslate(part);
+    });
+    
+    return translatedParts.join('');
+};
 
 export const BulkUploadModal = ({ isOpen, onClose, onImport, templateType }) => {
     const [fileData, setFileData] = useState(null);
@@ -93,9 +146,12 @@ export const BulkUploadModal = ({ isOpen, onClose, onImport, templateType }) => 
             if (values.length === 0 || (values.length === 1 && values[0] === '')) continue;
             
             const rawRow = {};
-            // Extract values using indices
-            rawRow.name = headerMapping.name !== undefined ? values[headerMapping.name]?.trim() : '';
-            rawRow.village = headerMapping.village !== undefined ? values[headerMapping.village]?.trim() : '';
+            // Extract values using indices and automatically transliterate English inputs to Tamil
+            const rawName = headerMapping.name !== undefined ? values[headerMapping.name]?.trim() : '';
+            const rawVillage = headerMapping.village !== undefined ? values[headerMapping.village]?.trim() : '';
+            
+            rawRow.name = translateFullNameToTamil(rawName);
+            rawRow.village = translateFullNameToTamil(rawVillage);
             rawRow.amount = headerMapping.amount !== undefined ? values[headerMapping.amount]?.trim() : '0';
             rawRow.giftTerm = headerMapping.giftTerm !== undefined ? values[headerMapping.giftTerm]?.trim() : '1st Time';
             rawRow.notes = headerMapping.notes !== undefined ? values[headerMapping.notes]?.trim() : '';

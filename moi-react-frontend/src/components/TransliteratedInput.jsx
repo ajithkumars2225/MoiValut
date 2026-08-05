@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 
 // Common Tamil static dictionary for offline fallback suggestions
-const BUILT_IN_DICT = {
+export const BUILT_IN_DICT = {
     // Occasions / Terms
     "moi": "மொய்",
     "panam": "பணம்",
@@ -59,7 +59,7 @@ const BUILT_IN_DICT = {
 };
 
 // Syllable-based English to Tamil phonetic mapping for offline translation fallback
-const offlinePhoneticTranslate = (englishWord) => {
+export const offlinePhoneticTranslate = (englishWord) => {
     if (!englishWord) return "";
     let text = englishWord.toLowerCase();
 
