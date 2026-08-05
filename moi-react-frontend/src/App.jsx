@@ -52,6 +52,32 @@ export function App() {
     const [goldEntries, setGoldEntries] = useState([]);
     const [conflictRecords, setConflictRecords] = useState([]);
     const [loading, setLoading] = useState(true);
+    const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    useEffect(() => {
+        const handleOnline = () => {
+            setIsOnline(true);
+            api.syncOfflineData().then(() => {
+                loadEvents();
+                if (activeEvent) {
+                    loadEventData(activeEvent.id);
+                }
+            });
+        };
+        const handleOffline = () => setIsOnline(false);
+
+        window.addEventListener('online', handleOnline);
+        window.addEventListener('offline', handleOffline);
+
+        if (navigator.onLine) {
+            api.syncOfflineData();
+        }
+
+        return () => {
+            window.removeEventListener('online', handleOnline);
+            window.removeEventListener('offline', handleOffline);
+        };
+    }, [activeEvent]);
 
     // Sync theme changes from settings
     useEffect(() => {
@@ -523,6 +549,7 @@ export function App() {
                     onOpenCreateEvent={handleOpenCreateEvent}
                     activeView={activeView}
                     currentUser={currentUser}
+                    isOnline={isOnline}
                 />
 
                 <div className="content-container">
