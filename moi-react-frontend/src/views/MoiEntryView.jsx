@@ -228,7 +228,7 @@ export const MoiEntryView = ({
 
         try {
             for (const txId of selectedTxIds) {
-                await onDeleteMoi(txId);
+                await onDeleteMoi(txId, true);
             }
             window.customAlert(`Successfully deleted ${selectedTxIds.length} entries.\n\n${selectedTxIds.length} பதிவுகள் வெற்றிகரமாக நீக்கப்பட்டன.`);
             setSelectedTxIds([]);

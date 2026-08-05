@@ -375,9 +375,11 @@ export function App() {
         return res;
     };
 
-    const handleDeleteMoi = async (id) => {
-        const confirmed = await window.customConfirm('Are you sure you want to delete this transaction?');
-        if (!confirmed) return;
+    const handleDeleteMoi = async (id, skipConfirmation = false) => {
+        if (!skipConfirmation) {
+            const confirmed = await window.customConfirm('Are you sure you want to delete this transaction?');
+            if (!confirmed) return;
+        }
         const oldTx = transactions.find((t) => (t.id === id || t.transactionId === id));
         await api.deleteMoi(id);
         if (activeEvent) await loadEventData(activeEvent.id);
@@ -454,9 +456,11 @@ export function App() {
         return res;
     };
 
-    const handleDeleteGivenMoi = async (id) => {
-        const confirmed = await window.customConfirm('Are you sure you want to delete this given gift record?');
-        if (!confirmed) return;
+    const handleDeleteGivenMoi = async (id, skipConfirmation = false) => {
+        if (!skipConfirmation) {
+            const confirmed = await window.customConfirm('Are you sure you want to delete this given gift record?');
+            if (!confirmed) return;
+        }
         const oldEntry = givenEntries.find((g) => (g.id === id || g.givenMoiEntryId === id));
         await api.deleteGivenMoi(id);
         if (activeEvent) await loadEventData(activeEvent.id);
