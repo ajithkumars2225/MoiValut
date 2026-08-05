@@ -2,6 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { api } from './services/api';
 import { Sidebar } from './components/Sidebar';
 import { TopHeader } from './components/TopHeader';
+import { CustomPopup } from './components/CustomPopup';
 import { EventModal } from './components/modals/EventModal';
 import { DashboardView } from './views/DashboardView';
 import { MoiEntryView } from './views/MoiEntryView';
@@ -53,6 +54,62 @@ export function App() {
     const [conflictRecords, setConflictRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
+
+    const [customModal, setCustomModal] = useState({
+        isOpen: false,
+        type: 'alert',
+        title: '',
+        message: '',
+        resolve: null
+    });
+
+    useEffect(() => {
+        window.customConfirm = (message, title = 'Confirm Action (உறுதிப்படுத்தல்)') => {
+            return new Promise((resolve) => {
+                const event = new CustomEvent('show-custom-confirm', {
+                    detail: { message, title, resolve }
+                });
+                window.dispatchEvent(event);
+            });
+        };
+
+        window.customAlert = (message, title = 'Notification (அறிவிப்பு)') => {
+            return new Promise((resolve) => {
+                const event = new CustomEvent('show-custom-alert', {
+                    detail: { message, title, resolve }
+                });
+                window.dispatchEvent(event);
+            });
+        };
+
+        const handleConfirmEvent = (e) => {
+            setCustomModal({
+                isOpen: true,
+                type: 'confirm',
+                title: e.detail.title,
+                message: e.detail.message,
+                resolve: e.detail.resolve
+            });
+        };
+
+        const handleAlertEvent = (e) => {
+            setCustomModal({
+                isOpen: true,
+                type: 'alert',
+                title: e.detail.title,
+                message: e.detail.message,
+                resolve: e.detail.resolve
+            });
+        };
+
+        window.addEventListener('show-custom-confirm', handleConfirmEvent);
+        window.addEventListener('show-custom-alert', handleAlertEvent);
+
+        return () => {
+            window.removeEventListener('show-custom-confirm', handleConfirmEvent);
+            window.removeEventListener('show-custom-alert', handleAlertEvent);
+        };
+    }, []);
 
     useEffect(() => {
         const handleOnline = () => {
@@ -236,7 +293,8 @@ export function App() {
     };
 
     const handleDeleteEvent = async (eventId) => {
-        if (!window.confirm('Are you sure you want to delete this event and all its entries?')) return;
+        const confirmed = await window.customConfirm('Are you sure you want to delete this event and all its entries?');
+        if (!confirmed) return;
         try {
             const oldEvt = events.find((e) => e.id === eventId);
             await api.deleteEvent(eventId);
@@ -318,7 +376,8 @@ export function App() {
     };
 
     const handleDeleteMoi = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this transaction?')) return;
+        const confirmed = await window.customConfirm('Are you sure you want to delete this transaction?');
+        if (!confirmed) return;
         const oldTx = transactions.find((t) => (t.id === id || t.transactionId === id));
         await api.deleteMoi(id);
         if (activeEvent) await loadEventData(activeEvent.id);
@@ -396,7 +455,8 @@ export function App() {
     };
 
     const handleDeleteGivenMoi = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this given gift record?')) return;
+        const confirmed = await window.customConfirm('Are you sure you want to delete this given gift record?');
+        if (!confirmed) return;
         const oldEntry = givenEntries.find((g) => (g.id === id || g.givenMoiEntryId === id));
         await api.deleteGivenMoi(id);
         if (activeEvent) await loadEventData(activeEvent.id);
@@ -468,7 +528,8 @@ export function App() {
     };
 
     const handleDeleteGold = async (id) => {
-        if (!window.confirm('Are you sure you want to delete this gold entry?')) return;
+        const confirmed = await window.customConfirm('Are you sure you want to delete this gold entry?');
+        if (!confirmed) return;
         const oldGold = goldEntries.find((g) => (g.id === id || g.goldEntryId === id));
         await api.deleteGold(id);
         if (activeEvent) await loadEventData(activeEvent.id);
@@ -656,6 +717,22 @@ export function App() {
                 onSave={handleSaveEvent}
                 editingEvent={editingEvent}
             />
+
+            {customModal.isOpen && (
+                <CustomPopup
+                    type={customModal.type}
+                    title={customModal.title}
+                    message={customModal.message}
+                    onConfirm={() => {
+                        if (customModal.resolve) customModal.resolve(true);
+                        setCustomModal((prev) => ({ ...prev, isOpen: false }));
+                    }}
+                    onCancel={() => {
+                        if (customModal.resolve) customModal.resolve(false);
+                        setCustomModal((prev) => ({ ...prev, isOpen: false }));
+                    }}
+                />
+            )}
         </div>
     );
 }

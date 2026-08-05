@@ -203,7 +203,7 @@ export const MoiEntryView = ({
     // 📊 EXCEL EXPORT HANDLER (EXPORTS FILTERED DATA + MULTI-SHEET TABS WHEN VILLAGE GROUPED) 📊
     const handleExportExcel = () => {
         if (filteredTransactions.length === 0) {
-            alert('No filtered records available to export.');
+            window.customAlert('No filtered records available to export.');
             return;
         }
 
@@ -260,7 +260,7 @@ export const MoiEntryView = ({
     // 📄 PDF PRINT EXPORT HANDLER (EXPORTS FILTERED DATA + SEPARATE PAGE BREAK PER VILLAGE WHEN GROUPED) 📄
     const handleExportPDF = () => {
         if (filteredTransactions.length === 0) {
-            alert('No filtered records available to export.');
+            window.customAlert('No filtered records available to export.');
             return;
         }
 

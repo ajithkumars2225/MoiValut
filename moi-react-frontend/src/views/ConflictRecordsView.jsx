@@ -273,7 +273,7 @@ export const ConflictRecordsView = ({ conflictRecords, onDeleteConflict, privile
     const paginatedRecords = filteredRecords.slice((currentPage - 1) * pageSize, currentPage * pageSize);
 
     const handleExportExcel = () => {
-        if (filteredRecords.length === 0) { alert('No records to export.'); return; }
+        if (filteredRecords.length === 0) { window.customAlert('No records to export.'); return; }
         const data = filteredRecords.map((r, idx) => {
             const prevReturn   = getPrevReturn(r);
             const ledgerAmount = getLedgerAmount(r);
@@ -297,7 +297,7 @@ export const ConflictRecordsView = ({ conflictRecords, onDeleteConflict, privile
     };
 
     const handleExportPDF = () => {
-        if (filteredRecords.length === 0) { alert('No records to export.'); return; }
+        if (filteredRecords.length === 0) { window.customAlert('No records to export.'); return; }
         const rowsHtml = filteredRecords.map((r, idx) => {
             const cfg          = STATUS_CONFIG[r.conflictStatus] || STATUS_CONFIG.NoPreviousRecord;
             const prevReturn   = getPrevReturn(r);
@@ -356,7 +356,8 @@ export const ConflictRecordsView = ({ conflictRecords, onDeleteConflict, privile
     };
 
     const handleDelete = async (id) => {
-        if (!window.confirm('Delete this conflict record?')) return;
+        const confirmed = await window.customConfirm('Delete this conflict record?');
+        if (!confirmed) return;
         onDeleteConflict && onDeleteConflict(id);
     };
 

@@ -186,7 +186,7 @@ export const GivenMoiEntryView = ({
     // Excel Export (Filtered dataset + Multi-sheet tabs when grouped by Village)
     const handleExportExcel = () => {
         if (filteredEntries.length === 0) {
-            alert('No filtered records available to export.');
+            window.customAlert('No filtered records available to export.');
             return;
         }
 
@@ -246,7 +246,7 @@ export const GivenMoiEntryView = ({
     // PDF Export (Filtered dataset + Separate physical page per village when grouped)
     const handleExportPDF = () => {
         if (filteredEntries.length === 0) {
-            alert('No filtered records available to export.');
+            window.customAlert('No filtered records available to export.');
             return;
         }
 

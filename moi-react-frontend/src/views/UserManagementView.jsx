@@ -98,8 +98,9 @@ export const UserManagementView = () => {
         }
     };
 
-    const handleDelete = (id, name) => {
-        if (window.confirm(`Are you sure you want to delete user "${name}"?`)) {
+    const handleDelete = async (id, name) => {
+        const confirmed = await window.customConfirm(`Are you sure you want to delete user "${name}"?`);
+        if (confirmed) {
             deleteUser(id);
             refreshUsersList();
         }

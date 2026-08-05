@@ -197,8 +197,9 @@ export const ReportsView = ({ privileges }) => {
     }, []);
 
     // Delete single log handler
-    const handleDeleteSingleLog = (id) => {
-        if (!window.confirm('Are you sure you want to delete this audit log entry?')) return;
+    const handleDeleteSingleLog = async (id) => {
+        const confirmed = await window.customConfirm('Are you sure you want to delete this audit log entry?');
+        if (!confirmed) return;
         const updated = deleteSingleAuditLog(id);
         setAuditLogs(updated);
     };
@@ -249,7 +250,7 @@ export const ReportsView = ({ privileges }) => {
 
     // Excel Export
     const handleExportExcel = () => {
-        if (filteredLogs.length === 0) { alert('No logs available to export.'); return; }
+        if (filteredLogs.length === 0) { window.customAlert('No logs available to export.'); return; }
         const data = filteredLogs.map((l, idx) => ({
             '#': idx + 1,
             'Timestamp (தேதி & நேரம்)': new Date(l.timestamp).toLocaleString('en-IN'),
@@ -269,7 +270,7 @@ export const ReportsView = ({ privileges }) => {
 
     // PDF Export Print Report
     const handleExportPDF = () => {
-        if (filteredLogs.length === 0) { alert('No logs available to export.'); return; }
+        if (filteredLogs.length === 0) { window.customAlert('No logs available to export.'); return; }
         const rowsHtml = filteredLogs.map((l, idx) => {
             const cfg = ACTION_CONFIG[l.actionType] || ACTION_CONFIG.CREATE;
             return `
@@ -322,8 +323,9 @@ export const ReportsView = ({ privileges }) => {
         printWindow.document.close();
     };
 
-    const handleClearAllLogs = () => {
-        if (!window.confirm('Are you sure you want to clear ALL audit logs permanently?')) return;
+    const handleClearAllLogs = async () => {
+        const confirmed = await window.customConfirm('Are you sure you want to clear ALL audit logs permanently?');
+        if (!confirmed) return;
         clearAuditLogs();
         refreshLogs();
     };

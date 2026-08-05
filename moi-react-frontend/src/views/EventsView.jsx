@@ -79,7 +79,7 @@ export const EventsView = ({
         if (!file || !targetEventForUpload) return;
 
         if (file.size > 5 * 1024 * 1024) {
-            alert('Image file size must be less than 5MB');
+            window.customAlert('Image file size must be less than 5MB');
             return;
         }
 

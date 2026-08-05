@@ -180,7 +180,7 @@ export const GoldEntryView = ({
     // Export Excel
     const handleExportExcel = () => {
         if (filteredEntries.length === 0) {
-            alert('No records available to export.');
+            window.customAlert('No records available to export.');
             return;
         }
 
@@ -201,7 +201,7 @@ export const GoldEntryView = ({
     // Export PDF Print Report
     const handleExportPDF = () => {
         if (filteredEntries.length === 0) {
-            alert('No records available to export.');
+            window.customAlert('No records available to export.');
             return;
         }
 

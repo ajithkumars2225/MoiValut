@@ -180,7 +180,7 @@ export const SettingsView = ({ settings, onUpdateSettings, onResetSettings }) =>
                             </div>
                         )}
                         <button
-                            onClick={() => { if (window.confirm('Reset all settings to defaults?')) onResetSettings(); }}
+                            onClick={async () => { if (await window.customConfirm('Reset all settings to defaults?')) onResetSettings(); }}
                             style={{
                                 display: 'flex', alignItems: 'center', gap: '0.4rem',
                                 background: 'rgba(244,63,94,0.12)', border: '1px solid rgba(244,63,94,0.3)',
