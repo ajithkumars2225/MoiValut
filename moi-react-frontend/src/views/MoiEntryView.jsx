@@ -17,10 +17,12 @@ import {
     Trash2,
     FileSpreadsheet,
     Printer,
+    Upload,
 } from 'lucide-react';
 import { MoiEntryModal } from '../components/modals/MoiEntryModal';
 import { ReceiptModal } from '../components/ReceiptModal';
 import { TransliteratedInput } from '../components/TransliteratedInput';
+import { BulkUploadModal } from '../components/modals/BulkUploadModal';
 
 // Helper for Filter State Portability (URL Query Params & Session Storage)
 const getInitialState = (key, fallback) => {
@@ -47,6 +49,7 @@ export const MoiEntryView = ({
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingTx, setEditingTx] = useState(null);
     const [selectedReceipt, setSelectedReceipt] = useState(null);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
 
     const canAdd    = !privileges || privileges.add === true;
     const canEdit   = !privileges || privileges.edit === true;
@@ -453,6 +456,18 @@ export const MoiEntryView = ({
                             {isFilterExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
 
+                        {/* Bulk Load Button */}
+                        {canAdd && (
+                            <button 
+                                className="modern-btn btn-export-excel" 
+                                style={{ border: '1px solid rgba(139, 92, 246, 0.4)', background: 'rgba(139, 92, 246, 0.08)', color: '#A78BFA' }}
+                                onClick={() => setIsBulkModalOpen(true)}
+                                title="Bulk Load Entries from CSV"
+                            >
+                                <Upload size={15} /> Bulk Upload (CSV)
+                            </button>
+                        )}
+
                         {/* Add Record Button */}
                         {canAdd && (
                             <button className="modern-btn btn-new-event-neon" onClick={handleOpenAdd}>
@@ -810,6 +825,19 @@ export const MoiEntryView = ({
                 data={selectedReceipt}
                 event={event}
                 givenEntries={givenEntries}
+            />
+
+            {/* Bulk Upload Modal */}
+            <BulkUploadModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+                onImport={async (data) => {
+                    await onRecordMoi({
+                        ...data,
+                        eventId: event.id
+                    });
+                }}
+                templateType="moi"
             />
         </div>
     );

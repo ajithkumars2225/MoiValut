@@ -19,9 +19,11 @@ import {
     Printer,
     Coins,
     IndianRupee,
+    Upload,
 } from 'lucide-react';
 import { GivenMoiModal } from '../components/modals/GivenMoiModal';
 import { TransliteratedInput } from '../components/TransliteratedInput';
+import { BulkUploadModal } from '../components/modals/BulkUploadModal';
 
 // Helper for Filter State Portability (URL Query Params & Session Storage)
 const getInitialState = (key, fallback) => {
@@ -46,6 +48,7 @@ export const GivenMoiEntryView = ({
 }) => {
     const [isModalOpen, setIsModalOpen] = useState(false);
     const [editingEntry, setEditingEntry] = useState(null);
+    const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
 
     const canAdd    = !privileges || privileges.add === true;
     const canEdit   = !privileges || privileges.edit === true;
@@ -440,6 +443,18 @@ export const GivenMoiEntryView = ({
                             {isFilterExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
 
+                        {/* Bulk Load Button */}
+                        {canAdd && (
+                            <button 
+                                className="modern-btn btn-export-excel" 
+                                style={{ border: '1px solid rgba(139, 92, 246, 0.4)', background: 'rgba(139, 92, 246, 0.08)', color: '#A78BFA' }}
+                                onClick={() => setIsBulkModalOpen(true)}
+                                title="Bulk Load Entries from CSV"
+                            >
+                                <Upload size={15} /> Bulk Upload (CSV)
+                            </button>
+                        )}
+
                         {/* Add Given Gift Button */}
                         {canAdd && (
                             <button className="modern-btn btn-new-event-neon" onClick={handleOpenAdd}>
@@ -772,6 +787,19 @@ export const GivenMoiEntryView = ({
                 editingEntry={editingEntry}
                 eventId={event?.id}
                 settings={settings}
+            />
+
+            {/* Bulk Upload Modal */}
+            <BulkUploadModal
+                isOpen={isBulkModalOpen}
+                onClose={() => setIsBulkModalOpen(false)}
+                onImport={async (data) => {
+                    await onRecordGivenMoi({
+                        ...data,
+                        eventId: event.id
+                    });
+                }}
+                templateType="given_moi"
             />
         </div>
     );
