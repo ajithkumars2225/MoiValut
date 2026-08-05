@@ -94,28 +94,33 @@ export const DashboardView = ({
         );
     }
 
+    // Safety Fallbacks to prevent crashes if lists are null/undefined
+    const txs = Array.isArray(transactions) ? transactions : [];
+    const golds = Array.isArray(goldEntries) ? goldEntries : [];
+    const givens = Array.isArray(givenEntries) ? givenEntries : [];
+
     // Financial Calculations
-    const totalCash = transactions.reduce((acc, t) => acc + Number(t.amount || 0), 0);
+    const totalCash = txs.reduce((acc, t) => acc + Number(t.amount || 0), 0);
     const totalContributorsCount = new Set([
-        ...transactions.map((t) => `${t.contributorName}-${t.village}`),
-        ...goldEntries.map((g) => `${g.contributorName}-${g.village}`),
+        ...txs.map((t) => `${t.contributorName}-${t.village}`),
+        ...golds.map((g) => `${g.contributorName}-${g.village}`),
     ]).size;
 
     // Highest Single Cash Gift
-    const highestTx = [...transactions].sort((a, b) => Number(b.amount) - Number(a.amount))[0];
+    const highestTx = [...txs].sort((a, b) => Number(b.amount) - Number(a.amount))[0];
 
     // Given Moi Calculations
-    const totalGivenMoiAmount = givenEntries.reduce((acc, g) => acc + Number(g.amount || 0), 0);
-    const totalGivenMoiCount = givenEntries.length;
-    const totalGivenMoiVillagesCount = new Set(givenEntries.map(g => g.village).filter(Boolean)).size;
-    const totalGivenGoldSovereigns = givenEntries
+    const totalGivenMoiAmount = givens.reduce((acc, g) => acc + Number(g.amount || 0), 0);
+    const totalGivenMoiCount = givens.length;
+    const totalGivenMoiVillagesCount = new Set(givens.map(g => g.village).filter(Boolean)).size;
+    const totalGivenGoldSovereigns = givens
         .filter(g => g.giftType === 'Gold')
         .reduce((acc, g) => acc + parseGoldToSovereign(g.goldDetails), 0);
 
     // Village Leaderboard Map
     const villageMap = {};
     const villageContributorsMap = {};
-    transactions.forEach((t) => {
+    txs.forEach((t) => {
         const v = t.village || 'Unspecified';
         villageMap[v] = (villageMap[v] || 0) + Number(t.amount || 0);
         if (!villageContributorsMap[v]) villageContributorsMap[v] = new Set();
@@ -134,13 +139,13 @@ export const DashboardView = ({
     const totalVillagesCount = topVillagesList.length;
 
     // Top 5 Cash Contributors Wall of Fame
-    const topContributorsWall = [...transactions]
+    const topContributorsWall = [...txs]
         .sort((a, b) => Number(b.amount) - Number(a.amount))
         .slice(0, 5);
 
     // Chart 1: Timeline Area Data
     let cumulative = 0;
-    const timelineData = transactions.map((t, idx) => {
+    const timelineData = txs.map((t, idx) => {
         cumulative += Number(t.amount || 0);
         return {
             index: idx + 1,
@@ -155,8 +160,8 @@ export const DashboardView = ({
 
     // Chart 3: Cash vs Gold Pie Chart
     const giftTypeData = [
-        { name: 'Cash Gifts (பணம்)', value: transactions.length, color: '#8B5CF6' },
-        { name: 'Gold Gifts (பொன்)', value: goldEntries.length, color: '#F59E0B' },
+        { name: 'Cash Gifts (பணம்)', value: txs.length, color: '#8B5CF6' },
+        { name: 'Gold Gifts (பொன்)', value: golds.length, color: '#F59E0B' },
     ].filter((item) => item.value > 0);
 
     // Chart 4: Amount Tier Distribution
@@ -167,7 +172,7 @@ export const DashboardView = ({
         '> ₹5,000': 0,
     };
 
-    transactions.forEach((t) => {
+    txs.forEach((t) => {
         const amt = Number(t.amount || 0);
         if (amt <= 500) tiers['< ₹500'] += 1;
         else if (amt <= 2000) tiers['₹501 - ₹2,000'] += 1;
@@ -256,7 +261,7 @@ export const DashboardView = ({
                         <span className="kpi-title">Total Gold Gifts</span>
                         <div className="kpi-icon-bg amber-icon"><Coins size={18} /></div>
                     </div>
-                    <h2 className="kpi-value text-gold">{goldEntries.length} Items</h2>
+                    <h2 className="kpi-value text-gold">{golds.length} Items</h2>
                     <span className="kpi-foot font-tamil">பொன்/நகை சேர்க்கைகள்</span>
                 </div>
 
