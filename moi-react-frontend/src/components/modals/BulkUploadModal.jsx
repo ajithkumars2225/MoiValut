@@ -10,12 +10,52 @@ const INITIALS_MAP = {
     'x': 'எக்ஸ்', 'y': 'ஒய்', 'z': 'இசட்', 'vai': 'வை'
 };
 
+const VILLAGE_SUFFIXES = {
+    'pattu': 'பட்டு',
+    'patti': 'பட்டி',
+    'patty': 'பட்டி',
+    'kadu': 'காடு',
+    'gadu': 'காடு',
+    'gaadu': 'காடு',
+    'viduthi': 'விடுதி',
+    'viduthy': 'விடுதி',
+    'viditi': 'விடுதி',
+    'vdthy': 'விடுதி',
+    'pudur': 'புதூர்',
+    'puthur': 'புதூர்',
+    'oor': 'ஊர்',
+    'ur': 'ஊர்',
+    'mangalam': 'மங்கலம்',
+    'palayam': 'பாளையம்',
+    'kudi': 'குடி',
+    'kulam': 'குளம்',
+    'kovil': 'கோவில்',
+    'koil': 'கோவில்',
+    'neri': 'நேரி',
+    'eri': 'ஏரி',
+    'malai': 'மலை',
+    'kottai': 'கோட்டை',
+    'kotty': 'கோட்டை',
+    'koval': 'கோவில்',
+    'puram': 'புரம்',
+    'kutti': 'குட்டி',
+    'kuty': 'குட்டி',
+    'ppty': 'ப்பட்டி',
+    'ptty': 'ப்பட்டி'
+};
+
 const translateFullNameToTamil = (fullName) => {
     if (!fullName) return "";
     
     // Only translate if it contains English letters
     if (!/[a-zA-Z]/.test(fullName)) {
         return fullName;
+    }
+
+    // Check exact match in static dictionary first (e.g. multi-word villages like "keela mettuppatty")
+    const normalizedFull = fullName.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (BUILT_IN_DICT[normalizedFull]) {
+        return BUILT_IN_DICT[normalizedFull];
     }
 
     // Split by dot or space to preserve initials separators
@@ -29,14 +69,23 @@ const translateFullNameToTamil = (fullName) => {
         const lowercaseWord = part.toLowerCase().trim();
         if (!lowercaseWord) return part;
 
+        // Check exact match in static dictionary (like single words)
+        if (BUILT_IN_DICT[lowercaseWord]) {
+            return BUILT_IN_DICT[lowercaseWord];
+        }
+
+        // Check if it matches a common village suffix ending
+        for (const [engSuffix, tamSuffix] of Object.entries(VILLAGE_SUFFIXES)) {
+            if (lowercaseWord.endsWith(engSuffix) && lowercaseWord.length > engSuffix.length) {
+                const prefixPart = lowercaseWord.substring(0, lowercaseWord.length - engSuffix.length);
+                const translatedPrefix = translateFullNameToTamil(prefixPart);
+                return translatedPrefix + tamSuffix;
+            }
+        }
+
         // Check if it is a single-letter or known initials map entry (like AA or VAI)
         if (INITIALS_MAP[lowercaseWord]) {
             return INITIALS_MAP[lowercaseWord];
-        }
-
-        // Check exact match in static dictionary
-        if (BUILT_IN_DICT[lowercaseWord]) {
-            return BUILT_IN_DICT[lowercaseWord];
         }
         
         // Check exact match in dynamic translit cache in localStorage
