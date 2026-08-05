@@ -50,6 +50,7 @@ export const MoiEntryView = ({
     const [editingTx, setEditingTx] = useState(null);
     const [selectedReceipt, setSelectedReceipt] = useState(null);
     const [isBulkModalOpen, setIsBulkModalOpen] = useState(false);
+    const [selectedTxIds, setSelectedTxIds] = useState([]);
 
     const canAdd    = !privileges || privileges.add === true;
     const canEdit   = !privileges || privileges.edit === true;
@@ -200,6 +201,39 @@ export const MoiEntryView = ({
             return await onUpdateMoi(txId, data);
         } else {
             return await onRecordMoi(data);
+        }
+    };
+
+    const handleSelectAll = (e) => {
+        if (e.target.checked) {
+            setSelectedTxIds(filteredTransactions.map(tx => tx.transactionId));
+        } else {
+            setSelectedTxIds([]);
+        }
+    };
+
+    const handleSelectOne = (txId) => {
+        setSelectedTxIds(prev => 
+            prev.includes(txId) 
+                ? prev.filter(id => id !== txId) 
+                : [...prev, txId]
+        );
+    };
+
+    const handleBulkDelete = async () => {
+        if (!onDeleteMoi) return;
+        const confirmMsg = `Are you sure you want to delete the ${selectedTxIds.length} selected entries? This action cannot be undone.\n\nதேர்ந்தெடுக்கப்பட்ட ${selectedTxIds.length} மொய் பதிவுகளை நீக்க விரும்புகிறீர்களா? இதை மாற்ற முடியாது.`;
+        const confirmed = await window.customConfirm(confirmMsg);
+        if (!confirmed) return;
+
+        try {
+            for (const txId of selectedTxIds) {
+                await onDeleteMoi(txId);
+            }
+            window.customAlert(`Successfully deleted ${selectedTxIds.length} entries.\n\n${selectedTxIds.length} பதிவுகள் வெற்றிகரமாக நீக்கப்பட்டன.`);
+            setSelectedTxIds([]);
+        } catch (err) {
+            window.customAlert(`Failed to delete some entries: ${err.message}`);
         }
     };
 
@@ -456,6 +490,18 @@ export const MoiEntryView = ({
                             {isFilterExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
 
+                        {/* Bulk Delete Button */}
+                        {canDelete && selectedTxIds.length > 0 && (
+                            <button 
+                                className="modern-btn btn-export-pdf" 
+                                style={{ border: '1px solid rgba(239, 68, 68, 0.4)', background: 'rgba(239, 68, 68, 0.08)', color: '#F87171' }}
+                                onClick={handleBulkDelete}
+                                title="Delete Selected Entries"
+                            >
+                                <Trash2 size={15} /> Delete Selected ({selectedTxIds.length})
+                            </button>
+                        )}
+
                         {/* Bulk Load Button */}
                         {canAdd && (
                             <button 
@@ -574,6 +620,15 @@ export const MoiEntryView = ({
                     <table className="custom-table modern-table compact-table">
                         <thead>
                             <tr>
+                                <th className="text-center" style={{ width: '40px' }}>
+                                    <input 
+                                        type="checkbox"
+                                        className="checkbox-input"
+                                        checked={filteredTransactions.length > 0 && selectedTxIds.length === filteredTransactions.length}
+                                        onChange={handleSelectAll}
+                                        style={{ cursor: 'pointer', transform: 'scale(1.2)' }}
+                                    />
+                                </th>
                                 <th className="text-left">
                                     <div className="th-bilingual">
                                         <span className="th-en">Contributor Name</span>
@@ -621,7 +676,7 @@ export const MoiEntryView = ({
                         <tbody>
                             {filteredTransactions.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="text-center text-muted py-6">
+                                    <td colSpan="8" className="text-center text-muted py-6">
                                         No cash gifts match your filters. Click <strong>Reset Filters</strong> or add a new gift!
                                     </td>
                                 </tr>
@@ -630,7 +685,7 @@ export const MoiEntryView = ({
                                 groupedData.map((group) => (
                                     <React.Fragment key={group.key}>
                                         <tr className="group-header-row">
-                                            <td colSpan="7">
+                                            <td colSpan="8">
                                                 <div className="group-title-bar">
                                                     <span className="group-name">
                                                         {groupBy === 'village' ? <MapPin size={14} className="text-gold" /> : <User size={14} className="text-purple" />}
@@ -644,6 +699,15 @@ export const MoiEntryView = ({
                                         </tr>
                                         {group.items.map((tx) => (
                                             <tr key={tx.transactionId} className="table-row-hover grouped-item-row">
+                                                <td className="text-center" style={{ width: '40px' }}>
+                                                    <input 
+                                                        type="checkbox"
+                                                        className="checkbox-input"
+                                                        checked={selectedTxIds.includes(tx.transactionId)}
+                                                        onChange={() => handleSelectOne(tx.transactionId)}
+                                                        style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
+                                                    />
+                                                </td>
                                                 <td className="text-left font-semibold pl-6">{tx.contributorName}</td>
                                                 <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>
                                                 <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>
@@ -701,6 +765,15 @@ export const MoiEntryView = ({
                                 /* UNGROUPED PAGINATED VIEW */
                                 paginatedTransactions.map((tx) => (
                                     <tr key={tx.transactionId} className="table-row-hover">
+                                        <td className="text-center" style={{ width: '40px' }}>
+                                            <input 
+                                                type="checkbox"
+                                                className="checkbox-input"
+                                                checked={selectedTxIds.includes(tx.transactionId)}
+                                                onChange={() => handleSelectOne(tx.transactionId)}
+                                                style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
+                                            />
+                                        </td>
                                         <td className="text-left font-semibold">{tx.contributorName}</td>
                                         <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>
                                         <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>
