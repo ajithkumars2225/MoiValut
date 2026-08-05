@@ -1,0 +1,457 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Moi Collection Software</title>
+    <link rel="stylesheet" href="styles.css">
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+
+    <!-- Scripts for Excel and Word -->
+
+    <script src="https://cdn.jsdelivr.net/npm/xlsx-js-style@1.2.0/dist/xlsx.bundle.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/docx/8.2.2/docx.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/FileSaver.js/2.0.5/FileSaver.min.js"></script>
+</head>
+
+<body>
+    <div class="app-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar">
+            <div class="logo-area">
+                <i class="fa-solid fa-gift logo-icon"></i>
+                <h1 class="logo-text">MoiVault</h1>
+            </div>
+            <nav class="side-nav">
+                <a href="#" class="nav-item active" id="nav-dashboard" data-view="dashboardView">
+                    <i class="fa-solid fa-chart-pie"></i> Dashboard
+                </a>
+                <a href="#" class="nav-item" id="nav-events" data-view="eventsView">
+                    <i class="fa-solid fa-pen-to-square"></i> Moi Entry
+                </a>
+                <a href="#" class="nav-item" id="nav-reports" data-view="reportsView">
+                    <i class="fa-solid fa-file-invoice-dollar"></i> Reports
+                </a>
+                <a href="#" class="nav-item" id="nav-event-details" data-view="eventDetailsView">
+                    <i class="fa-solid fa-calendar-days"></i> Events details
+                </a>
+
+                <a href="#" class="nav-item" id="nav-gold-entry" data-view="goldEntryView">
+                    <i class="fa-solid fa-coins"></i> Gold Entry
+                </a>
+                <a href="#" class="nav-item" id="nav-gold-reports" data-view="goldReportsView">
+                    <i class="fa-solid fa-file-invoice"></i> Gold Reports
+                </a>
+            </nav>
+            <div class="sidebar-footer">
+                <p>Welcome, Vijay</p>
+                <button class="logout-btn"><i class="fa-solid fa-sign-out-alt"></i> Logout</button>
+            </div>
+        </aside>
+
+        <!-- Main Content Area -->
+        <main class="main-content">
+            <header class="top-header">
+                <div class="header-left">
+                    <h2 id="pageTitle">Dashboard</h2>
+                    <p class="subtitle" id="pageSubtitle">Record and manage traditional cash gifts gracefully.</p>
+                </div>
+                <div class="header-right">
+                    <div class="event-selector-wrap">
+                        <label for="eventSelector">Current Event:</label>
+                        <select id="eventSelector">
+                            <option value="" disabled selected>Select an Event</option>
+                        </select>
+                        <button class="btn btn-primary" id="btnCreateEventModal" title="Create New Event">
+                            <i class="fa-solid fa-plus"></i> New
+                        </button>
+                    </div>
+                </div>
+            </header>
+
+            <!-- Views Container -->
+            <div id="viewsContainer" style="display: none;">
+
+                <!-- Dashboard View -->
+                <div id="dashboardView" class="view-section active">
+                    <!-- Dashboard Stats -->
+                    <section class="stats-grid" id="statsSection">
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fa-solid fa-users"></i></div>
+                            <div class="stat-info">
+                                <h3>Total Contributors</h3>
+                                <p id="totalContributors">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon highlight"><i class="fa-solid fa-indian-rupee-sign"></i></div>
+                            <div class="stat-info">
+                                <h3>Total Moi Collected</h3>
+                                <p id="totalAmount">₹0.00</p>
+                            </div>
+                        </div>
+                        <div class="stat-card">
+                            <div class="stat-icon"><i class="fa-solid fa-receipt"></i></div>
+                            <div class="stat-info">
+                                <h3>Recent Transactions</h3>
+                                <p id="recentCount">0</p>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="cursor: pointer;"
+                            onclick="document.getElementById('nav-event-details').click()">
+                            <div class="stat-icon"><i class="fa-solid fa-calendar-days"></i></div>
+                            <div class="stat-info">
+                                <h3>Total Events</h3>
+                                <p id="totalEventsCount">0</p>
+                                <span style="font-size: 0.8rem; color: var(--primary-color);">Manage All &rarr;</span>
+                            </div>
+                        </div>
+                        <div class="stat-card" style="cursor: pointer;" onclick="viewMismatchedData()">
+                            <div class="stat-icon" style="background: #fff1f2; color: #e11d48;"><i class="fa-solid fa-triangle-exclamation"></i></div>
+                            <div class="stat-info">
+                                <h3>Mismatched data</h3>
+                                <p id="mismatchedCount">0</p>
+                                <span style="font-size: 0.8rem; color: #e11d48;">View All Records &rarr;</span>
+                            </div>
+                        </div>
+                    </section>
+                </div>
+
+                <!-- Mismatch Details View -->
+                <div id="mismatchView" class="view-section" style="display: none;">
+                    <div class="card table-card" style="width: 100%;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3><i class="fa-solid fa-triangle-exclamation"></i> Mismatched Records (Repeat Contributors)</h3>
+                            <button class="btn btn-outline" onclick="document.getElementById('nav-dashboard').click()" style="padding: 6px 12px; font-size: 0.9rem; background: #f1f5f9; border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer;">
+                                <i class="fa-solid fa-arrow-left"></i> Back to Dashboard
+                            </button>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Name</th>
+                                            <th>Village</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="mismatchTableBody">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events View -->
+                <div id="eventsView" class="view-section" style="display: none;">
+                    <div class="content-grid" id="mainContentGrid">
+                        <!-- Record Moi Form -->
+                        <div class="card form-card">
+                            <div class="card-header">
+                                <h3 id="formTitle"><i class="fa-solid fa-pen-to-square"></i> Record New Moi</h3>
+                                <button id="cancelEditBtn" class="btn"
+                                    style="display: none; padding: 5px 10px; font-size: 0.8rem; background: #e2e8f0;">Cancel
+                                    Edit</button>
+                            </div>
+                            <div class="card-body">
+                                <form id="recordMoiForm">
+                                    <input type="hidden" id="editingTransactionId" value="">
+                                    <div class="form-group">
+                                        <label for="contributorName">Contributor Name *</label>
+                                        <input type="text" id="contributorName" required placeholder="Ex: Ramesh">
+                                    </div>
+                                    <div class="form-row">
+                                        <div class="form-group amount-group">
+                                            <label for="village">Village / City *</label>
+                                            <input type="text" id="village" required placeholder="Ex: Madurai"
+                                                list="villageList" autocomplete="off">
+                                            <datalist id="villageList"></datalist>
+                                        </div>
+                                    </div>
+                                    <div class="form-group amount-group">
+                                        <label for="amount">Moi Amount (₹) *</label>
+                                        <div class="amount-input-wrapper">
+                                            <span class="currency-symbol">₹</span>
+                                            <input type="number" id="amount" required min="1" step="0.01"
+                                                placeholder="1001.00">
+                                        </div>
+                                    </div>
+                                    <button type="submit" class="btn btn-primary submit-btn" id="submitMoiBtn">
+                                        <i class="fa-solid fa-save"></i> Save Transaction
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Transactions List -->
+                        <div class="card table-card" style="width: 100%; margin-top: 1rem;">
+                            <div class="card-header"
+                                style="flex-direction: row; display: flex; justify-content: space-between; align-items: center;">
+                                <h3><i class="fa-solid fa-list"></i> Recorded Transactions</h3>
+                                <div class="search-box" style="position: relative;">
+                                    <i class="fa-solid fa-search"
+                                        style="position: absolute; left: 10px; top: 50%; transform: translateY(-50%); color: var(--text-muted); font-size: 0.9rem;"></i>
+                                    <input type="text" id="eventSearch" placeholder="Search by name or village..."
+                                        style="padding: 8px 10px 8px 30px; border: 1px solid var(--border-color); border-radius: 6px; font-size: 0.9rem; width: 220px;">
+                                </div>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>S.No</th>
+                                                <th>Name</th>
+                                                <th>Village</th>
+                                                <th>Amount</th>
+                                                <th>Date</th>
+                                                <th>Actions</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="transactionsTableBody">
+                                            <!-- Rows populated by JS -->
+                                        </tbody>
+                                    </table>
+                                    <div class="empty-state" id="emptyState" style="display: none;">
+                                        <i class="fa-solid fa-box-open"></i>
+                                        <p>No transactions yet for this event.</p>
+                                    </div>
+                                    <div id="duplicateWarning" class="alert-danger"
+                                        style="display: none; margin: 15px; border-radius: 8px;">
+                                        <i class="fa-solid fa-triangle-exclamation"></i> the user already visited please
+                                        check name and village details.
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Reports View -->
+                <div id="reportsView" class="view-section" style="display: none;">
+                    <div class="card table-card" style="width: 100%;">
+                        <div class="card-header" style="flex-direction: column; align-items: stretch; gap: 1rem;">
+                            <div
+                                style="display: flex; justify-content: space-between; align-items: center; width: 100%;">
+                                <h3><i class="fa-solid fa-chart-bar"></i> Records for Selected Event</h3>
+                                <div style="display: flex; gap: 10px;">
+                                    <button class="btn btn-primary" id="btnExportGoogleSheet"
+                                        style="background-color: #0f9d58;"><i class="fa-solid fa-table"></i>
+                                        Google Sheet</button>
+                                    <button class="btn btn-primary" id="btnExportExcel"
+                                        style="background-color: var(--success);"><i class="fa-solid fa-file-excel"></i>
+                                        Download Excel</button>
+                                    <button class="btn btn-primary" id="btnExportWord"
+                                        style="background-color: #2b5797;"><i class="fa-solid fa-file-word"></i>
+                                        Download Word</button>
+                                </div>
+                            </div>
+                            <div
+                                style="display: flex; gap: 12px; border-top: 1px solid var(--border-color); padding-top: 1rem; align-items: center;">
+                                <span
+                                    style="font-size: 0.85rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.5px;"><i
+                                        class="fa-solid fa-arrow-down-a-z"></i> Sort All Records:</span>
+                                <button class="btn btn-outline" id="btnSortByName"
+                                    style="font-size: 0.85rem; padding: 6px 12px; border: 1px solid var(--border-color); background: #fff; cursor: pointer; border-radius: 6px;">
+                                    <i class="fa-solid fa-user"></i> Sort By Name
+                                </button>
+                                <button class="btn btn-outline" id="btnSortByVillage"
+                                    style="font-size: 0.85rem; padding: 6px 12px; border: 1px solid var(--border-color); background: #fff; cursor: pointer; border-radius: 6px;">
+                                    <i class="fa-solid fa-location-dot"></i> Sort By Village
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="data-table" id="reportsTable">
+                                    <thead>
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th id="temIdHeader" style="display: none;">Tem Id</th>
+                                            <th>Event ID</th>
+                                            <th>Name</th>
+                                            <th>Village</th>
+                                            <th>Amount</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="reportsTableBody">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Events Details View -->
+                <div id="eventDetailsView" class="view-section" style="display: none;">
+                    <div class="card table-card" style="width: 100%;">
+                        <div class="card-header">
+                            <h3><i class="fa-solid fa-calendar-days"></i> All Events & Tables</h3>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Event Name</th>
+                                            <th>Date</th>
+                                            <th>Location</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="eventsTableBody">
+                                        <!-- Populated via JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Gold Entry View -->
+                <div id="goldEntryView" class="view-section" style="display: none;">
+                    <div class="content-grid">
+                        <!-- Record Gold Form -->
+                        <div class="card form-card">
+                            <div class="card-header">
+                                <h3 id="goldFormTitle"><i class="fa-solid fa-coins"></i> Record Gold Entry</h3>
+                                <button id="cancelGoldEditBtn" class="btn" style="display: none; padding: 5px 10px; font-size: 0.8rem; background: #e2e8f0;">Cancel Edit</button>
+                            </div>
+                            <div class="card-body">
+                                <form id="goldEntryForm">
+                                    <input type="hidden" id="editingGoldId" value="">
+                                    <div class="form-group">
+                                        <label for="goldContributorName">Contributor Name *</label>
+                                        <input type="text" id="goldContributorName" required placeholder="Ex: Ramesh">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="goldVillage">Village / City *</label>
+                                        <input type="text" id="goldVillage" required placeholder="Ex: Madurai" list="villageList">
+                                    </div>
+                                    <div class="form-group">
+                                        <label for="goldDetails">Gold Details *</label>
+                                        <input type="text" id="goldDetails" required placeholder="Ex: 2 Grams Ring">
+                                    </div>
+                                    <button type="submit" class="btn btn-primary submit-btn" id="saveGoldBtn">
+                                        <i class="fa-solid fa-save"></i> Save Gold
+                                    </button>
+                                </form>
+                            </div>
+                        </div>
+
+                        <!-- Gold Entries List -->
+                        <div class="card table-card" style="width: 100%; margin-top: 1rem;">
+                            <div class="card-header">
+                                <h3><i class="fa-solid fa-list"></i> Recent Gold Records</h3>
+                            </div>
+                            <div class="card-body p-0">
+                                <div class="table-responsive">
+                                    <table class="data-table">
+                                        <thead>
+                                            <tr>
+                                                <th>S.No</th>
+                                                <th>Contributor Name</th>
+                                                <th>Village</th>
+                                                <th>Gold Details</th>
+                                                <th>Date</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody id="goldEntriesTableBody">
+                                            <!-- Rows populated by JS -->
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="goldReportsView" class="view-section" style="display: none;">
+                    <div class="card table-card" style="width: 100%;">
+                        <div class="card-header" style="display: flex; justify-content: space-between; align-items: center;">
+                            <h3><i class="fa-solid fa-file-invoice"></i> All Gold Collection Records</h3>
+                            <div style="display: flex; gap: 10px;">
+                                <button class="btn btn-primary" id="btnExportGoldExcel" style="background-color: var(--success);">
+                                    <i class="fa-solid fa-file-excel"></i> Download Excel
+                                </button>
+                                <button class="btn btn-primary" id="btnExportGoldWord" style="background-color: #2b5797;">
+                                    <i class="fa-solid fa-file-word"></i> Download Word
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-body p-0">
+                            <div class="table-responsive" style="max-height: 500px; overflow-y: auto;">
+                                <table class="data-table">
+                                    <thead>
+                                        <tr>
+                                            <th>S.No</th>
+                                            <th>Contributor Name</th>
+                                            <th>Village</th>
+                                            <th>Gold Details</th>
+                                            <th>Date</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="goldReportsTableBody">
+                                        <!-- Rows populated by JS -->
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+
+            <!-- Empty State when no event selected -->
+            <div class="select-event-prompt" id="selectEventPrompt">
+                <div class="prompt-icon"><i class="fa-solid fa-hand-holding-dollar"></i></div>
+                <h2>Welcome to MoiVault</h2>
+                <p>Please select an event from the top right menu or create a new one to start tracking.</p>
+            </div>
+        </main>
+    </div>
+
+    <!-- Modals -->
+    <!-- Create Event Modal -->
+    <div class="modal" id="createEventModal">
+        <div class="modal-content">
+            <span class="close-modal" id="closeEventModal">&times;</span>
+            <h2>Create New Event</h2>
+            <form id="createEventForm">
+                <div class="form-group">
+                    <label for="eventName">Event Name *</label>
+                    <input type="text" id="eventName" required placeholder="Ex: Karthik Wedding">
+                </div>
+                <div class="form-group">
+                    <label for="eventDate">Event Date *</label>
+                    <input type="date" id="eventDate" required>
+                </div>
+                <div class="form-group">
+                    <label for="eventLocation">Location *</label>
+                    <input type="text" id="eventLocation" required placeholder="Ex: Chennai">
+                </div>
+                <button type="submit" class="btn btn-primary full-width">Create Event</button>
+            </form>
+        </div>
+    </div>
+
+    <!-- Feedback Toast -->
+    <div id="toast" class="toast">Transaction saved successfully!</div>
+
+    <script src="transliteration.js"></script>
+    <script src="app.js"></script>
+</body>
+
+</html>
