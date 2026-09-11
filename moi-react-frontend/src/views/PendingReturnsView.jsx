@@ -13,7 +13,6 @@ import {
     FileSpreadsheet,
     Printer,
     MapPin,
-    Calendar,
     Send,
 } from 'lucide-react';
 import { ClosePendingModal } from '../components/modals/ClosePendingModal';
@@ -33,7 +32,7 @@ export const PendingReturnsView = ({
     const [searchQuery, setSearchQuery] = useState('');
     const [statusFilter, setStatusFilter] = useState('all'); // 'all' | 'Pending' | 'ClosedWithEntry' | 'ClosedWithoutEntry'
     const [selectedVillage, setSelectedVillage] = useState('');
-    
+
     // Modal states
     const [selectedPendingItem, setSelectedPendingItem] = useState(null);
     const [isCloseModalOpen, setIsCloseModalOpen] = useState(false);
@@ -51,7 +50,7 @@ export const PendingReturnsView = ({
     const canEdit = !privileges || privileges.edit === true;
     const canDelete = !privileges || privileges.delete === true;
 
-    // Villages list for filter
+    // Unique Villages list
     const villages = useMemo(() => {
         const set = new Set();
         pendingReturns.forEach((item) => {
@@ -163,7 +162,12 @@ export const PendingReturnsView = ({
             'Village (ஊர்)': item.village || '-',
             'Received Amount (வந்த தொகை ₹)': item.receivedAmount || 0,
             'Occasion (விசேஷம்)': item.occasion || '-',
-            'Status (நிலை)': item.status === 'Pending' ? 'நிலுவை (Pending)' : item.status === 'ClosedWithEntry' ? 'மொய் செய்து முடிந்தது' : 'மொய் இன்றி முடிந்தது',
+            'Status (நிலை)':
+                item.status === 'Pending'
+                    ? 'நிலுவை (Pending)'
+                    : item.status === 'ClosedWithEntry'
+                    ? 'மொய் செய்து முடிந்தது'
+                    : 'மொய் இன்றி முடிந்தது',
             'Created Date': item.createdAt ? new Date(item.createdAt).toLocaleDateString() : '-',
             'Closed Date': item.closedAt ? new Date(item.closedAt).toLocaleDateString() : '-',
             'Notes (குறிப்புகள்)': item.notes || '-',
@@ -180,161 +184,194 @@ export const PendingReturnsView = ({
     };
 
     return (
-        <div className="view-container space-y-6">
-            {/* Header Banner */}
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-slate-900/80 p-5 rounded-2xl border border-slate-800 backdrop-blur-md">
-                <div className="flex items-center gap-3">
-                    <div className="p-3 bg-amber-500/10 border border-amber-500/30 rounded-xl text-amber-400">
-                        <Clock size={28} />
-                    </div>
-                    <div>
-                        <h2 className="text-xl font-bold text-white font-tamil flex items-center gap-2">
-                            நிலுவை மொய் மேலாண்மை <span className="text-xs bg-amber-500/20 text-amber-300 border border-amber-500/30 px-2 py-0.5 rounded-full font-mono">Pending Returns</span>
-                        </h2>
-                        <p className="text-xs text-slate-400 font-tamil mt-0.5">
-                            நமக்கு மொய் செய்தவர்களின் குடும்ப விசேஷத்திற்கு திருப்பியளிக்க வேண்டிய நிலுவை மொய்களை மேலாண்மை செய்யவும்.
-                        </p>
-                    </div>
-                </div>
-
-                <div className="flex items-center gap-2 flex-wrap">
-                    <button
-                        onClick={handleExportExcel}
-                        className="hyper-btn-secondary text-xs font-tamil flex items-center gap-1.5"
-                        title="Excel கோப்பாக பதிவிறக்குக"
-                    >
-                        <FileSpreadsheet size={16} className="text-emerald-400" />
-                        <span>Excel Export</span>
-                    </button>
-                    <button
-                        onClick={handlePrint}
-                        className="hyper-btn-secondary text-xs font-tamil flex items-center gap-1.5"
-                    >
-                        <Printer size={16} className="text-blue-400" />
-                        <span>Print</span>
-                    </button>
-                    {canAdd && (
-                        <button
-                            onClick={() => setIsAddModalOpen(true)}
-                            className="hyper-btn-primary text-xs font-tamil flex items-center gap-1.5 bg-amber-600 hover:bg-amber-500"
+        <div className="view-content fade-in">
+            {/* 🌟 PAGE HEADER BAR 🌟 */}
+            <div className="full-width-card glass-card compact-list-header mb-3">
+                <div className="card-header-flex align-center">
+                    <div className="title-block-sm">
+                        <div
+                            className="badge-icon-purple-sm"
+                            style={{
+                                background: 'rgba(245, 158, 11, 0.2)',
+                                color: '#FBBF24',
+                                border: '1px solid rgba(245, 158, 11, 0.4)',
+                            }}
                         >
-                            <Plus size={16} />
-                            <span>நிலுவை மொய் சேர்க்க (+ Add Pending)</span>
+                            <Clock size={18} />
+                        </div>
+                        <div className="title-text-wrap">
+                            <h2 className="header-title-sm font-tamil">
+                                நிலுவை மொய் மேலாண்மை{' '}
+                                <span className="text-xs text-muted" style={{ fontWeight: 'normal', opacity: 0.75 }}>
+                                    (Pending Returns)
+                                </span>
+                            </h2>
+                            <span className="collection-pill-sm font-tamil">
+                                மொத்த நிலுவைத் தொகை:{' '}
+                                <strong className="text-gold">₹ {stats.pendingAmountTotal.toLocaleString('en-IN')}</strong> ({stats.pendingCount} நிலுவைகள்)
+                            </span>
+                        </div>
+                    </div>
+
+                    <div className="actions-block-sm">
+                        {/* Quick Search */}
+                        <div className="search-box-sm">
+                            <Search size={14} className="search-icon" />
+                            <TransliteratedInput
+                                value={searchQuery}
+                                onChange={(val) => setSearchQuery(val)}
+                                placeholder="தேடுக (பெயர், ஊர், விசேஷம்)..."
+                                className="search-input-sm font-tamil"
+                            />
+                        </div>
+
+                        {/* Export Excel */}
+                        <button className="modern-btn btn-export-excel" onClick={handleExportExcel} title="Export to Excel">
+                            <FileSpreadsheet size={15} /> Excel
                         </button>
-                    )}
-                </div>
-            </div>
 
-            {/* Stat Cards Grid */}
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-amber-500/30 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-medium text-slate-400 font-tamil">நிலுவையில் உள்ளவை (Pending)</p>
-                        <h3 className="text-2xl font-bold text-amber-400 font-mono mt-1">{stats.pendingCount}</h3>
-                        <p className="text-xs text-slate-400 font-mono mt-0.5">மொத்த நிலுவைத் தொகை: ₹{stats.pendingAmountTotal.toLocaleString()}</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-amber-500/10 text-amber-400">
-                        <AlertCircle size={24} />
-                    </div>
-                </div>
+                        {/* Export PDF */}
+                        <button className="modern-btn btn-export-pdf" onClick={handlePrint} title="Print PDF">
+                            <Printer size={15} /> PDF
+                        </button>
 
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-purple-500/30 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-medium text-slate-400 font-tamil">மொய் செய்து முடிந்தவை (With Entry)</p>
-                        <h3 className="text-2xl font-bold text-purple-400 font-mono mt-1">{stats.closedWithEntryCount}</h3>
-                        <p className="text-xs text-purple-300/70 font-tamil mt-0.5">செய்த மொய் பதிவுடன் முடிந்தது</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-purple-500/10 text-purple-400">
-                        <Send size={24} />
-                    </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-slate-700/50 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-medium text-slate-400 font-tamil">நேரடியாக முடிந்தவை (Without Entry)</p>
-                        <h3 className="text-2xl font-bold text-slate-300 font-mono mt-1">{stats.closedWithoutEntryCount}</h3>
-                        <p className="text-xs text-slate-400 font-tamil mt-0.5">காரணத்துடன் முடிந்தது</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-slate-800 text-slate-400">
-                        <FileX size={24} />
-                    </div>
-                </div>
-
-                <div className="p-4 rounded-xl bg-slate-900/60 border border-emerald-500/30 flex items-center justify-between">
-                    <div>
-                        <p className="text-xs font-medium text-slate-400 font-tamil">மொத்த பதிவுகள் (Total Records)</p>
-                        <h3 className="text-2xl font-bold text-emerald-400 font-mono mt-1">{stats.totalCount}</h3>
-                        <p className="text-xs text-emerald-300/70 font-tamil mt-0.5">வரலாறு உட்பட</p>
-                    </div>
-                    <div className="p-3 rounded-lg bg-emerald-500/10 text-emerald-400">
-                        <CheckCircle size={24} />
+                        {/* Add Pending Button */}
+                        {canAdd && (
+                            <button
+                                className="modern-btn btn-new-event-neon"
+                                style={{ background: 'linear-gradient(135deg, #D97706, #B45309)' }}
+                                onClick={() => setIsAddModalOpen(true)}
+                            >
+                                <Plus size={15} /> <span className="font-tamil">+ நிலுவை மொய் சேர்க்க</span>
+                            </button>
+                        )}
                     </div>
                 </div>
             </div>
 
-            {/* Filters Bar & Tabs */}
-            <div className="bg-slate-900/80 p-4 rounded-xl border border-slate-800 space-y-3">
-                {/* Status Tabs */}
-                <div className="flex flex-wrap gap-2 border-b border-slate-800 pb-3">
-                    <button
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold font-tamil transition-all ${
-                            statusFilter === 'all'
-                                ? 'bg-indigo-600 text-white shadow-md'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                        }`}
-                        onClick={() => setStatusFilter('all')}
-                    >
-                        அனைத்தும் (All - {stats.totalCount})
-                    </button>
-                    <button
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold font-tamil transition-all flex items-center gap-1.5 ${
-                            statusFilter === 'Pending'
-                                ? 'bg-amber-600 text-white shadow-md'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                        }`}
-                        onClick={() => setStatusFilter('Pending')}
-                    >
-                        <AlertCircle size={14} /> நிலுவையில் உள்ளவை (Pending - {stats.pendingCount})
-                    </button>
-                    <button
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold font-tamil transition-all flex items-center gap-1.5 ${
-                            statusFilter === 'ClosedWithEntry'
-                                ? 'bg-purple-600 text-white shadow-md'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                        }`}
-                        onClick={() => setStatusFilter('ClosedWithEntry')}
-                    >
-                        <CheckCircle size={14} /> மொய் செய்து முடிந்தவை ({stats.closedWithEntryCount})
-                    </button>
-                    <button
-                        className={`px-3 py-1.5 rounded-lg text-xs font-bold font-tamil transition-all flex items-center gap-1.5 ${
-                            statusFilter === 'ClosedWithoutEntry'
-                                ? 'bg-slate-700 text-white shadow-md'
-                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700 hover:text-slate-200'
-                        }`}
-                        onClick={() => setStatusFilter('ClosedWithoutEntry')}
-                    >
-                        <FileX size={14} /> நேரடியாக முடிந்தவை ({stats.closedWithoutEntryCount})
-                    </button>
+            {/* 📊 KPI 4-COLUMN STAT CARDS GRID 📊 */}
+            <div className="kpi-4-col-grid mb-3">
+                {/* Card 1: Pending Count */}
+                <div className="kpi-card glass-card amber-kpi">
+                    <div className="kpi-top">
+                        <span className="kpi-title font-tamil">நிலுவையில் உள்ளவை (Pending)</span>
+                        <div className="kpi-icon-bg amber-icon">
+                            <AlertCircle size={18} />
+                        </div>
+                    </div>
+                    <div className="kpi-value text-gold" style={{ fontFamily: 'monospace' }}>
+                        {stats.pendingCount}
+                    </div>
+                    <div className="kpi-foot font-tamil" style={{ color: '#FBBF24', fontWeight: 'bold' }}>
+                        நிலுவைத் தொகை: ₹{stats.pendingAmountTotal.toLocaleString('en-IN')}
+                    </div>
                 </div>
 
-                {/* Search & Inputs */}
-                <div className="flex flex-col sm:flex-row gap-3">
-                    {/* Search */}
-                    <div className="relative flex-1">
-                        <Search size={16} className="absolute left-3.5 top-3 text-slate-400" />
-                        <TransliteratedInput
-                            className="hyper-input pl-9 font-tamil"
-                            value={searchQuery}
-                            onChange={setSearchQuery}
-                            placeholder="பெயர், ஊர், விசேஷம் தேடவும்..."
-                        />
+                {/* Card 2: Closed With Entry */}
+                <div className="kpi-card glass-card purple-kpi">
+                    <div className="kpi-top">
+                        <span className="kpi-title font-tamil">மொய் செய்து முடிந்தவை</span>
+                        <div className="kpi-icon-bg purple-icon">
+                            <Send size={18} />
+                        </div>
+                    </div>
+                    <div className="kpi-value text-purple" style={{ fontFamily: 'monospace' }}>
+                        {stats.closedWithEntryCount}
+                    </div>
+                    <div className="kpi-foot font-tamil">செய்த மொய் பதிவுடன் முடிந்தது</div>
+                </div>
+
+                {/* Card 3: Closed Without Entry */}
+                <div className="kpi-card glass-card blue-kpi">
+                    <div className="kpi-top">
+                        <span className="kpi-title font-tamil">நேரடியாக முடிந்தவை</span>
+                        <div className="kpi-icon-bg blue-icon">
+                            <FileX size={18} />
+                        </div>
+                    </div>
+                    <div className="kpi-value" style={{ fontFamily: 'monospace', color: '#60A5FA' }}>
+                        {stats.closedWithoutEntryCount}
+                    </div>
+                    <div className="kpi-foot font-tamil">காரணத்துடன் முடிந்தது</div>
+                </div>
+
+                {/* Card 4: Total Historical Records */}
+                <div className="kpi-card glass-card emerald-kpi">
+                    <div className="kpi-top">
+                        <span className="kpi-title font-tamil">மொத்த பதிவுகள் (Total)</span>
+                        <div className="kpi-icon-bg emerald-icon">
+                            <CheckCircle size={18} />
+                        </div>
+                    </div>
+                    <div className="kpi-value text-emerald" style={{ fontFamily: 'monospace' }}>
+                        {stats.totalCount}
+                    </div>
+                    <div className="kpi-foot font-tamil">வரலாற்று பதிவுகள்</div>
+                </div>
+            </div>
+
+            {/* 🔍 FILTER TABS & VILLAGE SELECTOR BAR 🔍 */}
+            <div className="full-width-card glass-card mb-3" style={{ padding: '0.85rem 1.25rem' }}>
+                <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexWrap: 'wrap', gap: '0.75rem' }}>
+                    {/* Status Filter Tabs */}
+                    <div style={{ display: 'flex', alignItems: 'center', gap: '0.4rem', flexWrap: 'wrap' }}>
+                        <button
+                            className="page-nav-btn font-tamil"
+                            style={{
+                                background: statusFilter === 'all' ? '#8B5CF6' : undefined,
+                                color: statusFilter === 'all' ? '#FFF' : undefined,
+                                borderColor: statusFilter === 'all' ? '#8B5CF6' : undefined,
+                                fontWeight: statusFilter === 'all' ? 'bold' : undefined,
+                            }}
+                            onClick={() => setStatusFilter('all')}
+                        >
+                            அனைத்தும் (All - {stats.totalCount})
+                        </button>
+
+                        <button
+                            className="page-nav-btn font-tamil"
+                            style={{
+                                background: statusFilter === 'Pending' ? 'rgba(245, 158, 11, 0.25)' : undefined,
+                                color: statusFilter === 'Pending' ? '#FBBF24' : undefined,
+                                borderColor: statusFilter === 'Pending' ? 'rgba(245, 158, 11, 0.5)' : undefined,
+                                fontWeight: statusFilter === 'Pending' ? 'bold' : undefined,
+                            }}
+                            onClick={() => setStatusFilter('Pending')}
+                        >
+                            <AlertCircle size={13} /> நிலுவையில் உள்ளவை ({stats.pendingCount})
+                        </button>
+
+                        <button
+                            className="page-nav-btn font-tamil"
+                            style={{
+                                background: statusFilter === 'ClosedWithEntry' ? 'rgba(139, 92, 246, 0.25)' : undefined,
+                                color: statusFilter === 'ClosedWithEntry' ? '#A78BFA' : undefined,
+                                borderColor: statusFilter === 'ClosedWithEntry' ? 'rgba(139, 92, 246, 0.5)' : undefined,
+                                fontWeight: statusFilter === 'ClosedWithEntry' ? 'bold' : undefined,
+                            }}
+                            onClick={() => setStatusFilter('ClosedWithEntry')}
+                        >
+                            <CheckCircle size={13} /> மொய் செய்து முடிந்தவை ({stats.closedWithEntryCount})
+                        </button>
+
+                        <button
+                            className="page-nav-btn font-tamil"
+                            style={{
+                                background: statusFilter === 'ClosedWithoutEntry' ? 'rgba(156, 163, 175, 0.2)' : undefined,
+                                color: statusFilter === 'ClosedWithoutEntry' ? '#E2E8F0' : undefined,
+                                borderColor: statusFilter === 'ClosedWithoutEntry' ? 'rgba(156, 163, 175, 0.4)' : undefined,
+                                fontWeight: statusFilter === 'ClosedWithoutEntry' ? 'bold' : undefined,
+                            }}
+                            onClick={() => setStatusFilter('ClosedWithoutEntry')}
+                        >
+                            <FileX size={13} /> நேரடியாக முடிந்தவை ({stats.closedWithoutEntryCount})
+                        </button>
                     </div>
 
                     {/* Village Dropdown */}
-                    <div className="w-full sm:w-56">
+                    <div style={{ minWidth: '220px' }}>
                         <select
-                            className="hyper-input font-tamil"
+                            className="modern-control-sm font-tamil"
                             value={selectedVillage}
                             onChange={(e) => setSelectedVillage(e.target.value)}
                         >
@@ -349,27 +386,64 @@ export const PendingReturnsView = ({
                 </div>
             </div>
 
-            {/* Main Records Table */}
-            <div className="bg-slate-900/80 rounded-2xl border border-slate-800 overflow-hidden">
-                <div className="overflow-x-auto">
-                    <table className="w-full text-left text-sm border-collapse">
+            {/* 📋 MAIN RECORDS TABLE 📋 */}
+            <div className="full-width-card glass-card table-card">
+                <div className="table-responsive">
+                    <table className="custom-table modern-table compact-table">
                         <thead>
-                            <tr className="bg-slate-950/80 border-b border-slate-800 text-slate-400 text-xs font-semibold uppercase tracking-wider font-tamil">
-                                <th className="p-3.5 w-12 text-center">#</th>
-                                <th className="p-3.5">நபர் பெயர் (Contributor Name)</th>
-                                <th className="p-3.5">ஊர் (Village)</th>
-                                <th className="p-3.5 text-right">நமக்கு தந்த மொய் (Received Amount)</th>
-                                <th className="p-3.5">நிகழ்ச்சி / விசேஷம்</th>
-                                <th className="p-3.5 text-center">நிலை (Status)</th>
-                                <th className="p-3.5">குறிப்புகள் / முடித்த விவரம்</th>
-                                <th className="p-3.5 text-right">நடவடிக்கை (Action)</th>
+                            <tr>
+                                <th className="text-center" style={{ width: '40px' }}>
+                                    #
+                                </th>
+                                <th className="text-left">
+                                    <div className="th-bilingual">
+                                        <span className="th-en">Contributor Name</span>
+                                        <span className="th-ta">நபர் பெயர்</span>
+                                    </div>
+                                </th>
+                                <th className="text-left">
+                                    <div className="th-bilingual">
+                                        <span className="th-en">Village</span>
+                                        <span className="th-ta">ஊர்</span>
+                                    </div>
+                                </th>
+                                <th className="text-right">
+                                    <div className="th-bilingual right">
+                                        <span className="th-en">Received Amount</span>
+                                        <span className="th-ta">வந்த மொய் ₹</span>
+                                    </div>
+                                </th>
+                                <th className="text-left">
+                                    <div className="th-bilingual">
+                                        <span className="th-en">Occasion</span>
+                                        <span className="th-ta">விசேஷம்</span>
+                                    </div>
+                                </th>
+                                <th className="text-center">
+                                    <div className="th-bilingual center">
+                                        <span className="th-en">Status</span>
+                                        <span className="th-ta">நிலை</span>
+                                    </div>
+                                </th>
+                                <th className="text-left">
+                                    <div className="th-bilingual">
+                                        <span className="th-en">Notes / Closure Details</span>
+                                        <span className="th-ta">குறிப்புகள்</span>
+                                    </div>
+                                </th>
+                                <th className="text-center">
+                                    <div className="th-bilingual center">
+                                        <span className="th-en">Action</span>
+                                        <span className="th-ta">செயல்</span>
+                                    </div>
+                                </th>
                             </tr>
                         </thead>
-                        <tbody className="divide-y divide-slate-800/60">
+                        <tbody>
                             {filteredItems.length === 0 ? (
                                 <tr>
-                                    <td colSpan="8" className="p-12 text-center text-slate-500 font-tamil">
-                                        <Clock size={40} className="mx-auto mb-3 opacity-30 text-amber-400" />
+                                    <td colSpan="8" className="text-center text-muted py-6 font-tamil">
+                                        <Clock size={36} style={{ display: 'block', margin: '0 auto 8px auto', opacity: 0.3, color: '#F59E0B' }} />
                                         நிலுவை மொய் பதிவுகள் எதுவும் இல்லை (No pending return records found).
                                     </td>
                                 </tr>
@@ -382,79 +456,109 @@ export const PendingReturnsView = ({
                                     return (
                                         <tr
                                             key={item.id || item.pendingReturnId || index}
-                                            className={`hover:bg-slate-800/40 transition-colors ${
-                                                isPending ? 'bg-amber-950/10' : ''
-                                            }`}
+                                            className="table-row-hover"
+                                            style={{
+                                                background: isPending ? 'rgba(245, 158, 11, 0.04)' : undefined,
+                                            }}
                                         >
-                                            <td className="p-3.5 text-center font-mono text-slate-400 text-xs">
-                                                {index + 1}
-                                            </td>
+                                            <td className="text-center text-muted text-xs font-mono">{index + 1}</td>
 
-                                            <td className="p-3.5 font-bold text-white font-tamil">
+                                            <td className="text-left font-semibold font-tamil" style={{ color: 'var(--text-header)' }}>
                                                 {item.contributorName}
                                             </td>
 
-                                            <td className="p-3.5 text-slate-300 font-tamil">
-                                                {item.village ? (
-                                                    <span className="flex items-center gap-1">
-                                                        <MapPin size={13} className="text-slate-400 shrink-0" />
-                                                        {item.village}
-                                                    </span>
-                                                ) : (
-                                                    '-'
-                                                )}
+                                            <td className="text-left font-tamil">
+                                                <span className="badge-village">{item.village || '-'}</span>
                                             </td>
 
-                                            <td className="p-3.5 text-right font-mono font-bold text-emerald-400">
-                                                ₹{(item.receivedAmount || 0).toLocaleString()}
+                                            <td className="text-right amount-col font-mono font-bold">
+                                                ₹ {(item.receivedAmount || 0).toLocaleString('en-IN')}
                                             </td>
 
-                                            <td className="p-3.5 text-slate-300 text-xs font-tamil">
-                                                {item.occasion || '-'}
-                                            </td>
+                                            <td className="text-left text-xs font-tamil">{item.occasion || '-'}</td>
 
                                             {/* Status Badge */}
-                                            <td className="p-3.5 text-center">
+                                            <td className="text-center">
                                                 {isPending && (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-amber-500/15 text-amber-300 border border-amber-500/30 font-tamil">
-                                                        <AlertCircle size={13} />
-                                                        நிலுவையில் உள்ளது
+                                                    <span
+                                                        className="badge-term-tag font-tamil"
+                                                        style={{
+                                                            background: 'rgba(245, 158, 11, 0.2)',
+                                                            color: '#FBBF24',
+                                                            borderColor: 'rgba(245, 158, 11, 0.4)',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        <AlertCircle size={12} /> நிலுவையில் உள்ளது
                                                     </span>
                                                 )}
                                                 {isClosedWithEntry && (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-purple-500/15 text-purple-300 border border-purple-500/30 font-tamil">
-                                                        <CheckCircle size={13} />
-                                                        மொய் செய்து முடிந்தது
+                                                    <span
+                                                        className="badge-term-tag font-tamil"
+                                                        style={{
+                                                            background: 'rgba(139, 92, 246, 0.2)',
+                                                            color: '#A78BFA',
+                                                            borderColor: 'rgba(139, 92, 246, 0.4)',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        <CheckCircle size={12} /> மொய் செய்து முடிந்தது
                                                     </span>
                                                 )}
                                                 {isClosedWithoutEntry && (
-                                                    <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-semibold bg-slate-800 text-slate-400 border border-slate-700 font-tamil">
-                                                        <FileX size={13} />
-                                                        மொய் இன்றி முடிந்தது
+                                                    <span
+                                                        className="badge-term-tag font-tamil"
+                                                        style={{
+                                                            background: 'rgba(156, 163, 175, 0.15)',
+                                                            color: '#9CA3AF',
+                                                            borderColor: 'rgba(156, 163, 175, 0.3)',
+                                                            display: 'inline-flex',
+                                                            alignItems: 'center',
+                                                            gap: '4px',
+                                                        }}
+                                                    >
+                                                        <FileX size={12} /> மொய் இன்றி முடிந்தது
                                                     </span>
                                                 )}
                                             </td>
 
                                             {/* Notes / Closure details */}
-                                            <td className="p-3.5 text-xs text-slate-400 font-tamil max-w-xs truncate">
+                                            <td className="text-left text-xs text-muted font-tamil">
                                                 {item.notes || '-'}
                                                 {item.closedAt && (
-                                                    <span className="block text-[11px] text-slate-500 font-mono mt-0.5">
+                                                    <span style={{ display: 'block', fontSize: '0.7rem', color: '#6B7280', fontFamily: 'monospace', marginTop: '2px' }}>
                                                         Closed: {new Date(item.closedAt).toLocaleDateString()}
                                                     </span>
                                                 )}
                                             </td>
 
-                                            {/* Actions */}
-                                            <td className="p-3.5 text-right">
-                                                <div className="flex items-center justify-end gap-2">
+                                            {/* Action Buttons */}
+                                            <td className="text-center">
+                                                <div className="row-actions-flex">
                                                     {isPending && canEdit && (
                                                         <button
                                                             onClick={() => handleOpenCloseModal(item)}
-                                                            className="px-3 py-1.5 rounded-lg bg-amber-600 hover:bg-amber-500 text-white text-xs font-bold font-tamil flex items-center gap-1 shadow-sm transition-all"
+                                                            className="modern-btn font-tamil"
+                                                            style={{
+                                                                background: 'linear-gradient(135deg, #D97706, #B45309)',
+                                                                color: '#FFF',
+                                                                padding: '0.35rem 0.75rem',
+                                                                borderRadius: '8px',
+                                                                fontSize: '0.75rem',
+                                                                fontWeight: 'bold',
+                                                                display: 'inline-flex',
+                                                                alignItems: 'center',
+                                                                gap: '0.3rem',
+                                                                border: 'none',
+                                                                cursor: 'pointer',
+                                                            }}
                                                             title="நிலுவையை முடித்து வைக்குக"
                                                         >
-                                                            <CheckCircle size={14} />
+                                                            <CheckCircle size={13} />
                                                             <span>நிலுவை முடித்தல்</span>
                                                         </button>
                                                     )}
@@ -466,10 +570,10 @@ export const PendingReturnsView = ({
                                                                     onDeletePendingReturn(item.id || item.pendingReturnId);
                                                                 }
                                                             }}
-                                                            className="p-1.5 rounded-lg text-slate-400 hover:text-red-400 hover:bg-red-500/10 transition-colors"
+                                                            className="action-btn-sm delete-btn"
                                                             title="அழிப்பது (Delete)"
                                                         >
-                                                            <Trash2 size={16} />
+                                                            <Trash2 size={14} />
                                                         </button>
                                                     )}
                                                 </div>
@@ -499,21 +603,23 @@ export const PendingReturnsView = ({
             {isAddModalOpen && (
                 <div className="hyper-backdrop">
                     <div className="hyper-modal-card purple-glow spring-popup" style={{ maxWidth: '520px' }}>
-                        <div className="hyper-modal-header">
-                            <div className="flex items-center gap-3">
-                                <div className="p-2.5 rounded-xl bg-amber-500/10 text-amber-400 border border-amber-500/30">
+                        <div className="hyper-header purple-theme">
+                            <div className="hyper-title-group">
+                                <div className="hyper-icon-box glow-purple">
                                     <Clock size={20} />
                                 </div>
-                                <h3 className="hyper-modal-title font-tamil">புதிய நிலுவை மொய் பதிவு (+ Pending Return)</h3>
+                                <h3 className="font-tamil" style={{ margin: 0 }}>
+                                    புதிய நிலுவை மொய் பதிவு (+ Pending Return)
+                                </h3>
                             </div>
-                            <button className="hyper-icon-btn" onClick={() => setIsAddModalOpen(false)}>
-                                <Trash2 size={16} />
+                            <button className="hyper-close-btn" onClick={() => setIsAddModalOpen(false)}>
+                                <X size={18} />
                             </button>
                         </div>
 
-                        <form onSubmit={handleCreateNewPending} className="hyper-modal-body space-y-4">
-                            <div className="space-y-2">
-                                <label className="hyper-label font-tamil">நபர் பெயர் (Contributor Name) *</label>
+                        <form onSubmit={handleCreateNewPending} className="hyper-body">
+                            <div className="hyper-field">
+                                <label className="field-label font-tamil">நபர் பெயர் (Contributor Name) *</label>
                                 <TransliteratedInput
                                     className="hyper-input font-tamil"
                                     value={newContributorName}
@@ -523,9 +629,9 @@ export const PendingReturnsView = ({
                                 />
                             </div>
 
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                                <div className="space-y-2">
-                                    <label className="hyper-label font-tamil">ஊர் (Village)</label>
+                            <div className="hyper-row-2">
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">ஊர் (Village)</label>
                                     <TransliteratedInput
                                         className="hyper-input font-tamil"
                                         value={newVillage}
@@ -534,8 +640,8 @@ export const PendingReturnsView = ({
                                     />
                                 </div>
 
-                                <div className="space-y-2">
-                                    <label className="hyper-label font-tamil">வந்த தொகை (Received ₹)</label>
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">வந்த தொகை (Received ₹)</label>
                                     <input
                                         type="number"
                                         className="hyper-input"
@@ -546,8 +652,8 @@ export const PendingReturnsView = ({
                                 </div>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="hyper-label font-tamil">விசேஷம் / காரணம்</label>
+                            <div className="hyper-field">
+                                <label className="field-label font-tamil">விசேஷம் / காரணம்</label>
                                 <TransliteratedInput
                                     className="hyper-input font-tamil"
                                     value={newOccasion}
@@ -556,8 +662,8 @@ export const PendingReturnsView = ({
                                 />
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="hyper-label font-tamil">குறிப்புகள் (Notes)</label>
+                            <div className="hyper-field">
+                                <label className="field-label font-tamil">குறிப்புகள் (Notes)</label>
                                 <TransliteratedInput
                                     className="hyper-input font-tamil"
                                     value={newNotes}
@@ -566,18 +672,15 @@ export const PendingReturnsView = ({
                                 />
                             </div>
 
-                            <div className="hyper-modal-footer pt-3 flex justify-end gap-2 border-t border-slate-800">
-                                <button
-                                    type="button"
-                                    className="hyper-btn-secondary font-tamil"
-                                    onClick={() => setIsAddModalOpen(false)}
-                                >
+                            <div className="hyper-footer">
+                                <button type="button" className="hyper-btn btn-ghost-dark font-tamil" onClick={() => setIsAddModalOpen(false)}>
                                     ரத்து செய் (Cancel)
                                 </button>
                                 <button
                                     type="submit"
-                                    className="hyper-btn-primary font-tamil bg-amber-600 hover:bg-amber-500"
+                                    className="hyper-btn btn-purple-neon font-tamil"
                                     disabled={isSubmitting}
+                                    style={{ background: 'linear-gradient(135deg, #D97706, #B45309)' }}
                                 >
                                     சேமிக்கவும் (Save Pending)
                                 </button>

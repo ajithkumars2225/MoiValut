@@ -46,7 +46,7 @@ export const ClosePendingModal = ({
             setCustomOccasion('');
             setGiftTerm('Return Moi');
             setGivenDate(new Date().toISOString().slice(0, 10));
-            setNotes(pendingItem.notes ? `Closed pending return. Original notes: ${pendingItem.notes}` : '');
+            setNotes(pendingItem.notes ? `Closed pending return. Notes: ${pendingItem.notes}` : '');
             setCloseReason('');
             setCloseOption('with_entry');
         }
@@ -86,112 +86,115 @@ export const ClosePendingModal = ({
 
     return (
         <div className="hyper-backdrop">
-            <div className="hyper-modal-card purple-glow spring-popup" style={{ maxWidth: '680px', width: '92%' }}>
+            <div className="hyper-modal-card purple-glow spring-popup" style={{ maxWidth: '680px', width: '94%' }}>
                 {/* Header */}
-                <div className="hyper-modal-header">
-                    <div className="flex items-center gap-3">
-                        <div className="p-2.5 rounded-xl bg-gradient-to-br from-amber-500/20 to-purple-500/20 text-amber-400 border border-amber-500/30">
-                            <CheckCircle size={22} />
+                <div className="hyper-header purple-theme">
+                    <div className="hyper-title-group">
+                        <div className="hyper-icon-box glow-purple">
+                            <CheckCircle size={20} />
                         </div>
                         <div>
-                            <h3 className="hyper-modal-title font-tamil">நிலுவை மொய் முடித்தல் (Close Pending Return)</h3>
-                            <p className="hyper-modal-sub font-tamil">
-                                நபர்: <strong>{pendingItem.contributorName}</strong> ({pendingItem.village || 'ஊர் இல்லை'}) | வந்த தொகை: ₹{pendingItem.receivedAmount || 0}
-                            </p>
+                            <span className="hyper-tag font-tamil">நிலுவை மொய் முடித்தல் (Close Pending Return)</span>
+                            <h3 className="font-tamil" style={{ marginTop: '2px', fontSize: '1.1rem' }}>
+                                {pendingItem.contributorName} ({pendingItem.village || 'ஊர் இல்லை'}) &nbsp;
+                                <span style={{ color: '#34D399', fontSize: '0.9rem', fontWeight: 'bold' }}>
+                                    (வந்த தொகை: ₹{pendingItem.receivedAmount || 0})
+                                </span>
+                            </h3>
                         </div>
                     </div>
-                    <button className="hyper-icon-btn" onClick={onClose} disabled={isSubmitting}>
+                    <button className="hyper-close-btn" onClick={onClose} disabled={isSubmitting}>
                         <X size={18} />
                     </button>
                 </div>
 
-                {/* Option Selector Cards */}
-                <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3 bg-slate-900/60 border-b border-slate-800/80">
+                {/* Option Selector Buttons */}
+                <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '0.75rem', padding: '1rem 1.25rem 0.5rem 1.25rem' }}>
                     <button
                         type="button"
                         onClick={() => setCloseOption('with_entry')}
-                        className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                            closeOption === 'with_entry'
-                                ? 'bg-purple-950/40 border-purple-500/80 text-purple-200 ring-2 ring-purple-500/30'
-                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
-                        }`}
+                        style={{
+                            padding: '0.85rem',
+                            borderRadius: '12px',
+                            border: closeOption === 'with_entry' ? '2px solid #8B5CF6' : '1px solid var(--border-color)',
+                            background: closeOption === 'with_entry' ? 'rgba(139, 92, 246, 0.2)' : 'var(--bg-control-sm)',
+                            color: closeOption === 'with_entry' ? '#FFF' : 'var(--text-muted)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                        }}
                     >
-                        <div className="flex items-center gap-2 mb-1.5 font-bold font-tamil text-sm text-purple-300">
-                            <Send size={16} />
-                            <span>1. மொய் செய்து பதிவு செய்து முடிக்க (With Entry)</span>
+                        <div className="font-tamil" style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#A78BFA', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+                            <Send size={15} /> 1. மொய் செய்து பதிவு செய்ய (With Entry)
                         </div>
-                        <p className="text-xs text-slate-400 font-tamil leading-relaxed">
-                            அவர்களின் விசேஷத்தில் நாம் செய்த மொய் விவரங்களை பதிவு செய்து நிலுவையை முடிக்கும் முறை.
-                        </p>
+                        <div className="font-tamil" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.3' }}>
+                            நாம் செய்த மொய் விபரங்களை பதிவு செய்து நிலுவையை முடித்தல்.
+                        </div>
                     </button>
 
                     <button
                         type="button"
                         onClick={() => setCloseOption('without_entry')}
-                        className={`p-3.5 rounded-xl border text-left transition-all flex flex-col justify-between ${
-                            closeOption === 'without_entry'
-                                ? 'bg-amber-950/40 border-amber-500/80 text-amber-200 ring-2 ring-amber-500/30'
-                                : 'bg-slate-800/40 border-slate-700/60 text-slate-400 hover:bg-slate-800/70 hover:text-slate-200'
-                        }`}
+                        style={{
+                            padding: '0.85rem',
+                            borderRadius: '12px',
+                            border: closeOption === 'without_entry' ? '2px solid #F59E0B' : '1px solid var(--border-color)',
+                            background: closeOption === 'without_entry' ? 'rgba(245, 158, 11, 0.2)' : 'var(--bg-control-sm)',
+                            color: closeOption === 'without_entry' ? '#FFF' : 'var(--text-muted)',
+                            textAlign: 'left',
+                            cursor: 'pointer',
+                            transition: 'all 0.2s ease',
+                        }}
                     >
-                        <div className="flex items-center gap-2 mb-1.5 font-bold font-tamil text-sm text-amber-300">
-                            <FileX size={16} />
-                            <span>2. மொய் இன்றி நேரடியாக முடிக்க (Without Entry)</span>
+                        <div className="font-tamil" style={{ fontWeight: 'bold', fontSize: '0.9rem', color: '#FBBF24', display: 'flex', alignItems: 'center', gap: '0.4rem', marginBottom: '0.3rem' }}>
+                            <FileX size={15} /> 2. நேரடியாக முடிக்க (Without Entry)
                         </div>
-                        <p className="text-xs text-slate-400 font-tamil leading-relaxed">
-                            புதிய மொய் பதிவு இன்றி காரணத்துடன் நிலுவையை நேரடியாக முடித்தல்.
-                        </p>
+                        <div className="font-tamil" style={{ fontSize: '0.75rem', color: 'var(--text-muted)', lineHeight: '1.3' }}>
+                            மொய் பதிவின்றி காரணத்துடன் நேரடியாக முடித்தல்.
+                        </div>
                     </button>
                 </div>
 
-                {/* Main Form Body */}
-                <form onSubmit={handleConfirm} className="hyper-modal-body space-y-4">
+                {/* Form Body */}
+                <form onSubmit={handleConfirm} className="hyper-body" style={{ paddingTop: '0.5rem' }}>
                     {closeOption === 'with_entry' ? (
                         <>
-                            <div className="bg-purple-950/20 border border-purple-800/30 rounded-xl p-3 text-xs text-purple-300 flex items-center gap-2 font-tamil">
-                                <AlertCircle size={16} className="shrink-0 text-purple-400" />
-                                <span>
-                                    இப் படிவம் மூலம் <strong>{pendingItem.contributorName}</strong> பெயரில் "செய்த மொய் (Given Moi)" பதிவு செய்யப்பட்டு, நிலுவை முடித்து வைக்கப்படும்.
-                                </span>
-                            </div>
-
                             {/* Gift Type Toggle */}
-                            <div className="flex items-center gap-4 bg-slate-900/50 p-2.5 rounded-xl border border-slate-800">
-                                <span className="text-xs font-semibold text-slate-300 font-tamil">மொய் வகை:</span>
-                                <div className="flex gap-2">
+                            <div className="hyper-field">
+                                <label className="field-label font-tamil">மொய் வகை (Gift Type)</label>
+                                <div className="hyper-row-2">
                                     <button
                                         type="button"
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                            giftType === 'Cash'
-                                                ? 'bg-purple-600 text-white shadow-md'
-                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                        }`}
+                                        className={`preset-pill-btn flex-align justify-center ${giftType === 'Cash' ? 'selected-purple' : ''}`}
+                                        style={{ padding: '0.55rem', borderRadius: '10px', fontWeight: 'bold' }}
                                         onClick={() => setGiftType('Cash')}
                                     >
-                                        <IndianRupee size={14} /> பணம் (Cash)
+                                        <IndianRupee size={15} /> பணம் (Cash)
                                     </button>
                                     <button
                                         type="button"
-                                        className={`px-3 py-1.5 rounded-lg text-xs font-bold transition-all flex items-center gap-1.5 ${
-                                            giftType === 'Gold'
-                                                ? 'bg-amber-600 text-white shadow-md'
-                                                : 'bg-slate-800 text-slate-400 hover:bg-slate-700'
-                                        }`}
+                                        className={`preset-pill-btn flex-align justify-center ${giftType === 'Gold' ? 'selected-purple' : ''}`}
+                                        style={{
+                                            padding: '0.55rem',
+                                            borderRadius: '10px',
+                                            fontWeight: 'bold',
+                                            background: giftType === 'Gold' ? 'linear-gradient(135deg,#F59E0B,#D97706)' : undefined,
+                                        }}
                                         onClick={() => setGiftType('Gold')}
                                     >
-                                        <Coins size={14} /> பொன் (Gold)
+                                        <Coins size={15} /> பொன் (Gold)
                                     </button>
                                 </div>
                             </div>
 
                             {giftType === 'Cash' ? (
-                                <div className="space-y-2">
-                                    <label className="hyper-label font-tamil">செய்த மொய் தொகை (Amount ₹) *</label>
-                                    <div className="relative">
-                                        <IndianRupee size={16} className="absolute left-3.5 top-3 text-slate-400" />
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">செய்த மொய் தொகை (Given Amount ₹) *</label>
+                                    <div className="input-with-symbol">
+                                        <span className="symbol-badge">₹</span>
                                         <input
                                             type="number"
-                                            className="hyper-input pl-9"
+                                            className="hyper-input with-indent"
                                             value={givenAmount}
                                             onChange={(e) => setGivenAmount(e.target.value)}
                                             placeholder="எ.கா. 1001"
@@ -199,12 +202,13 @@ export const ClosePendingModal = ({
                                             min="1"
                                         />
                                     </div>
-                                    <div className="flex flex-wrap gap-1.5 pt-1">
+                                    <div className="preset-chips-flex" style={{ marginTop: '0.4rem' }}>
                                         {PRESET_AMOUNTS.map((amt) => (
                                             <button
                                                 key={amt}
                                                 type="button"
-                                                className="px-2.5 py-1 text-xs rounded-md bg-slate-800/80 border border-slate-700/60 hover:border-purple-500 text-slate-300 hover:text-white transition-all font-mono"
+                                                className="preset-pill-btn"
+                                                style={{ fontSize: '0.75rem', padding: '0.25rem 0.65rem' }}
                                                 onClick={() => setGivenAmount(amt.toString())}
                                             >
                                                 +₹{amt}
@@ -213,8 +217,8 @@ export const ClosePendingModal = ({
                                     </div>
                                 </div>
                             ) : (
-                                <div className="space-y-2">
-                                    <label className="hyper-label font-tamil">பொன் விபரம் (Gold Details) *</label>
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">பொன் விபரம் (Gold Details) *</label>
                                     <TransliteratedInput
                                         className="hyper-input"
                                         value={goldDetails}
@@ -225,12 +229,11 @@ export const ClosePendingModal = ({
                                 </div>
                             )}
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                                {/* Occasion */}
-                                <div className="space-y-2">
-                                    <label className="hyper-label font-tamil">விசேஷம் / நிகழ்ச்சி *</label>
+                            <div className="hyper-row-2">
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">விசேஷம் / நிகழ்ச்சி *</label>
                                     <select
-                                        className="hyper-input font-tamil"
+                                        className="hyper-input modern-control font-tamil"
                                         value={occasion}
                                         onChange={(e) => setOccasion(e.target.value)}
                                     >
@@ -240,20 +243,10 @@ export const ClosePendingModal = ({
                                             </option>
                                         ))}
                                     </select>
-                                    {occasion === 'மற்றவை (Other)' && (
-                                        <TransliteratedInput
-                                            className="hyper-input mt-2 font-tamil"
-                                            value={customOccasion}
-                                            onChange={setCustomOccasion}
-                                            placeholder="நிகழ்ச்சி பெயர் உள்ளிடவும்"
-                                            required
-                                        />
-                                    )}
                                 </div>
 
-                                {/* Date */}
-                                <div className="space-y-2">
-                                    <label className="hyper-label font-tamil">மொய் செய்த தேதி *</label>
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">மொய் செய்த தேதி *</label>
                                     <input
                                         type="date"
                                         className="hyper-input"
@@ -264,9 +257,21 @@ export const ClosePendingModal = ({
                                 </div>
                             </div>
 
-                            {/* Notes */}
-                            <div className="space-y-2">
-                                <label className="hyper-label font-tamil">குறிப்புகள் (Notes / Remarks)</label>
+                            {occasion === 'மற்றவை (Other)' && (
+                                <div className="hyper-field">
+                                    <label className="field-label font-tamil">விசேஷ பெயர் உள்ளிடவும்</label>
+                                    <TransliteratedInput
+                                        className="hyper-input font-tamil"
+                                        value={customOccasion}
+                                        onChange={setCustomOccasion}
+                                        placeholder="நிகழ்ச்சி பெயர் உள்ளிடவும்"
+                                        required
+                                    />
+                                </div>
+                            )}
+
+                            <div className="hyper-field">
+                                <label className="field-label font-tamil">குறிப்புகள் (Notes / Remarks)</label>
                                 <TransliteratedInput
                                     className="hyper-input font-tamil"
                                     value={notes}
@@ -276,53 +281,52 @@ export const ClosePendingModal = ({
                             </div>
                         </>
                     ) : (
-                        <>
-                            <div className="bg-amber-950/20 border border-amber-800/30 rounded-xl p-3 text-xs text-amber-300 flex items-center gap-2 font-tamil">
-                                <AlertCircle size={16} className="shrink-0 text-amber-400" />
+                        <div className="hyper-field">
+                            <div
+                                style={{
+                                    background: 'rgba(245, 158, 11, 0.12)',
+                                    border: '1px solid rgba(245, 158, 11, 0.3)',
+                                    borderRadius: '10px',
+                                    padding: '0.75rem 1rem',
+                                    marginBottom: '1rem',
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '0.5rem',
+                                    fontSize: '0.82rem',
+                                    color: '#FBBF24',
+                                }}
+                                className="font-tamil"
+                            >
+                                <AlertCircle size={16} />
                                 <span>
-                                    <strong>{pendingItem.contributorName}</strong> என்பவரின் நிலுவை மொய் பதிவு எவ்வித புதிய மொய் பதிவும் இன்றி முடித்து வைக்கப்படும்.
+                                    <strong>{pendingItem.contributorName}</strong> என்பவரின் நிலுவை பதிவு புதிய மொய் இன்றி முடித்து வைக்கப்படும்.
                                 </span>
                             </div>
 
-                            <div className="space-y-2">
-                                <label className="hyper-label font-tamil">நிலுவை முடிப்பதற்கான காரணம் / குறிப்பு</label>
-                                <TransliteratedInput
-                                    className="hyper-input font-tamil"
-                                    value={closeReason}
-                                    onChange={setCloseReason}
-                                    placeholder="எ.கா. நேரில் சென்று வாழ்த்து தெரிவிக்கப்பட்டது / நேரடியாக தொகையை திருப்பியளிக்கப்பட்டது"
-                                    rows={3}
-                                />
-                            </div>
-                        </>
+                            <label className="field-label font-tamil">நிலுவை முடிப்பதற்கான காரணம் / குறிப்பு</label>
+                            <TransliteratedInput
+                                className="hyper-input font-tamil"
+                                value={closeReason}
+                                onChange={setCloseReason}
+                                placeholder="எ.கா. நேரில் சென்று வாழ்த்து தெரிவிக்கப்பட்டது / நேரடியாக தொகையை திருப்பியளிக்கப்பட்டது"
+                            />
+                        </div>
                     )}
 
                     {/* Footer Actions */}
-                    <div className="hyper-modal-footer pt-3 flex justify-end gap-2 border-t border-slate-800">
-                        <button
-                            type="button"
-                            className="hyper-btn-secondary font-tamil"
-                            onClick={onClose}
-                            disabled={isSubmitting}
-                        >
+                    <div className="hyper-footer" style={{ marginTop: '1rem' }}>
+                        <button type="button" className="hyper-btn btn-ghost-dark font-tamil" onClick={onClose} disabled={isSubmitting}>
                             ரத்து செய் (Cancel)
                         </button>
                         <button
                             type="submit"
-                            className={`hyper-btn-primary font-tamil flex items-center gap-2 ${
-                                closeOption === 'with_entry' ? 'bg-purple-600 hover:bg-purple-500' : 'bg-amber-600 hover:bg-amber-500'
-                            }`}
+                            className={`hyper-btn ${closeOption === 'with_entry' ? 'btn-purple-neon' : 'btn-export-pdf'}`}
                             disabled={isSubmitting}
+                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.4rem', padding: '0.65rem 1.25rem' }}
                         >
-                            {isSubmitting ? (
-                                <Loader size={16} className="animate-spin" />
-                            ) : (
-                                <CheckCircle size={16} />
-                            )}
-                            <span>
-                                {closeOption === 'with_entry'
-                                    ? 'மொய் பதிவு செய்து நிலுவை முடி (Save & Close)'
-                                    : 'நிலுவை முடித்து வை (Close Pending)'}
+                            {isSubmitting ? <Loader size={16} className="spin" /> : <CheckCircle size={16} />}
+                            <span className="font-tamil">
+                                {closeOption === 'with_entry' ? 'மொய் பதிவு செய்து முடி (Save & Close)' : 'நிலுவை முடித்து வை (Close Pending)'}
                             </span>
                         </button>
                     </div>
