@@ -262,9 +262,18 @@ export function App() {
     };
 
     const handleClosePendingWithEntry = async (pendingId, givenMoiData) => {
+        // 1. Create Given Moi Entry
         const newGiven = await api.recordGivenMoi(givenMoiData);
         setGivenEntries((prev) => [newGiven, ...prev]);
 
+        // 2. Find associated target Pending item & original Moi Entry
+        const targetPending = pendingReturns.find((p) => p.id === pendingId || p.pendingReturnId === pendingId);
+        const targetTx = transactions.find((t) =>
+            (targetPending?.moiTransactionId && (t.transactionId === targetPending.moiTransactionId || t.id === targetPending.moiTransactionId)) ||
+            (targetPending?.contributorName && t.contributorName?.trim().toLowerCase() === targetPending.contributorName.trim().toLowerCase())
+        );
+
+        // 3. Update Pending Return status
         const updateData = {
             status: 'ClosedWithEntry',
             closedAt: new Date().toISOString(),
@@ -276,6 +285,33 @@ export function App() {
             prev.map((p) => (p.id === pendingId || p.pendingReturnId === pendingId ? updatedPending : p))
         );
 
+        // 4. Remove original Cash Gift from Moi Entry list if present
+        if (targetTx) {
+            const txId = targetTx.transactionId || targetTx.id;
+            try {
+                await api.deleteMoi(txId);
+                setTransactions((prev) => prev.filter((t) => t.transactionId !== txId && t.id !== txId));
+
+                recordAuditLog({
+                    actionType: 'DELETE',
+                    module: 'MoiEntry',
+                    recordName: targetTx.contributorName,
+                    village: targetTx.village || '-',
+                    oldValue: {
+                        'பெயர் (Name)': targetTx.contributorName,
+                        'ஊர் (Village)': targetTx.village || '-',
+                        'வந்த தொகை (Amount)': targetTx.amount,
+                        'தேதி (Date)': targetTx.transactionDate
+                    },
+                    newValue: null,
+                    details: `நிலுவை மொய் செய்யப் பட்டு முடித்து வைக்கப்பட்டதால், வந்த மொய் பட்டியலிலிருந்து (${targetTx.contributorName} - ₹${targetTx.amount}) நீக்கப்பட்டு Audit Log தணிக்கையில் வரலாறாகப் பராமரிக்கப்படுகிறது.`
+                });
+            } catch (e) {
+                console.error('Failed to remove original transaction:', e);
+            }
+        }
+
+        // 5. Audit Log for Pending Return Closure
         recordAuditLog({
             actionType: 'UPDATE',
             module: 'PendingReturns',
@@ -291,6 +327,14 @@ export function App() {
     };
 
     const handleClosePendingWithoutEntry = async (pendingId, notes) => {
+        // 1. Find associated target Pending item & original Moi Entry
+        const targetPending = pendingReturns.find((p) => p.id === pendingId || p.pendingReturnId === pendingId);
+        const targetTx = transactions.find((t) =>
+            (targetPending?.moiTransactionId && (t.transactionId === targetPending.moiTransactionId || t.id === targetPending.moiTransactionId)) ||
+            (targetPending?.contributorName && t.contributorName?.trim().toLowerCase() === targetPending.contributorName.trim().toLowerCase())
+        );
+
+        // 2. Update Pending Return status
         const updateData = {
             status: 'ClosedWithoutEntry',
             closedAt: new Date().toISOString(),
@@ -301,9 +345,37 @@ export function App() {
             prev.map((p) => (p.id === pendingId || p.pendingReturnId === pendingId ? updatedPending : p))
         );
 
+        // 3. Remove original Cash Gift from Moi Entry list if present
+        if (targetTx) {
+            const txId = targetTx.transactionId || targetTx.id;
+            try {
+                await api.deleteMoi(txId);
+                setTransactions((prev) => prev.filter((t) => t.transactionId !== txId && t.id !== txId));
+
+                recordAuditLog({
+                    actionType: 'DELETE',
+                    module: 'MoiEntry',
+                    recordName: targetTx.contributorName,
+                    village: targetTx.village || '-',
+                    oldValue: {
+                        'பெயர் (Name)': targetTx.contributorName,
+                        'ஊர் (Village)': targetTx.village || '-',
+                        'வந்த தொகை (Amount)': targetTx.amount,
+                        'தேதி (Date)': targetTx.transactionDate
+                    },
+                    newValue: null,
+                    details: `நிலுவை மொய் நேரடியாக முடித்து வைக்கப்பட்டதால், வந்த மொய் பட்டியலிலிருந்து (${targetTx.contributorName} - ₹${targetTx.amount}) நீக்கப்பட்டு Audit Log தணிக்கையில் வரலாறாகப் பராமரிக்கப்படுகிறது.`
+                });
+            } catch (e) {
+                console.error('Failed to remove original transaction:', e);
+            }
+        }
+
+        // 4. Audit Log for Pending Return Closure
         recordAuditLog({
             actionType: 'UPDATE',
             module: 'PendingReturns',
+            recordName: targetPending?.contributorName || 'Pending Return',
             newValue: {
                 'நிலை': 'ClosedWithoutEntry',
                 'குறிப்புகள்': notes
