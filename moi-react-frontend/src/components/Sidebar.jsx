@@ -15,6 +15,7 @@ import {
     AlertTriangle,
     Settings,
     Users,
+    Clock,
 } from 'lucide-react';
 
 export const Sidebar = ({
@@ -32,6 +33,7 @@ export const Sidebar = ({
         { id: 'events', label: 'Events Details', icon: CalendarDays },
         { id: 'moi', label: 'Moi Entry (வந்த பணம்)', icon: IndianRupee },
         { id: 'given_moi', label: 'Given Moi (செய்த மொய்)', icon: Send },
+        { id: 'pending_returns', label: 'Pending Returns (நிலுவை மொய்)', icon: Clock },
         { id: 'conflicts', label: 'Conflict Records (முரண்பாடு)', icon: AlertTriangle },
         { id: 'gold', label: 'Gold Entry (பொன்)', icon: Coins },
         { id: 'reports', label: 'Audit Log (தணிக்கை)', icon: FileText },
@@ -43,6 +45,7 @@ export const Sidebar = ({
     const navItems = allNavItems.filter((item) => {
         if (!currentUser) return true; // fallback
         if (currentUser.role === 'admin') return true; // Admin has access to everything
+        if (item.id === 'pending_returns' && (currentUser.privileges?.given_moi?.view || currentUser.privileges?.moi?.view)) return true;
         return currentUser.privileges?.[item.id]?.view === true;
     });
 

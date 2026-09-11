@@ -130,6 +130,17 @@ const applyLocalUpdate = (action, payload, entityId = null) => {
         }
         setCache('cache_conflicts', conflicts);
     }
+    else if (action.endsWith('_PENDING')) {
+        let pendings = getCache('cache_pending_returns', []);
+        if (action === 'CREATE_PENDING') {
+            pendings.unshift(payload);
+        } else if (action === 'UPDATE_PENDING') {
+            pendings = pendings.map(p => (p.id === entityId || p.pendingReturnId === entityId) ? { ...p, ...payload } : p);
+        } else if (action === 'DELETE_PENDING') {
+            pendings = pendings.filter(p => p.id !== entityId && p.pendingReturnId !== entityId);
+        }
+        setCache('cache_pending_returns', pendings);
+    }
 };
 
 export const api = {
@@ -734,6 +745,84 @@ export const api = {
         } catch {
             addToSyncQueue('DELETE_GOLD', {}, id);
             applyLocalUpdate('DELETE_GOLD', {}, id);
+        }
+    },
+
+    // Pending Returns APIs
+    getPendingReturns: async (eventId = null) => {
+        try {
+            if (!navigator.onLine) throw new TypeError('Offline');
+            const url = eventId ? `${BASE_URL}/PendingReturns?eventId=${eventId}` : `${BASE_URL}/PendingReturns`;
+            const res = await fetch(url);
+            if (!res.ok) throw new Error('Failed to fetch pending returns');
+            const data = await res.json();
+            setCache(eventId ? `cache_pending_returns_${eventId}` : 'cache_pending_returns', data);
+            return data;
+        } catch {
+            return getCache(eventId ? `cache_pending_returns_${eventId}` : 'cache_pending_returns', []);
+        }
+    },
+
+    createPendingReturn: async (data) => {
+        try {
+            if (!navigator.onLine) throw new TypeError('Offline');
+            const res = await fetch(`${BASE_URL}/PendingReturns`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error('Failed to create pending return');
+            const saved = await res.json();
+            applyLocalUpdate('CREATE_PENDING', saved);
+            return saved;
+        } catch {
+            const tempId = 'temp-pending-' + Date.now();
+            const mockSaved = {
+                id: tempId,
+                pendingReturnId: tempId,
+                ...data,
+                status: data.status || 'Pending',
+                createdAt: new Date().toISOString(),
+            };
+            addToSyncQueue('CREATE_PENDING', mockSaved);
+            applyLocalUpdate('CREATE_PENDING', mockSaved);
+            return mockSaved;
+        }
+    },
+
+    updatePendingReturn: async (id, data) => {
+        try {
+            if (!navigator.onLine) throw new TypeError('Offline');
+            const res = await fetch(`${BASE_URL}/PendingReturns/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data),
+            });
+            if (!res.ok) throw new Error('Failed to update pending return');
+            const saved = await res.json();
+            applyLocalUpdate('UPDATE_PENDING', saved, id);
+            return saved;
+        } catch {
+            const mockSaved = {
+                id,
+                pendingReturnId: id,
+                ...data,
+            };
+            addToSyncQueue('UPDATE_PENDING', mockSaved, id);
+            applyLocalUpdate('UPDATE_PENDING', mockSaved, id);
+            return mockSaved;
+        }
+    },
+
+    deletePendingReturn: async (id) => {
+        try {
+            if (!navigator.onLine) throw new TypeError('Offline');
+            const res = await fetch(`${BASE_URL}/PendingReturns/${id}`, { method: 'DELETE' });
+            if (!res.ok) throw new Error('Failed to delete pending return');
+            applyLocalUpdate('DELETE_PENDING', {}, id);
+        } catch {
+            addToSyncQueue('DELETE_PENDING', {}, id);
+            applyLocalUpdate('DELETE_PENDING', {}, id);
         }
     },
 

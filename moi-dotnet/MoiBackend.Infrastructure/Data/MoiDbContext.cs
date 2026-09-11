@@ -15,6 +15,7 @@ public class MoiDbContext : DbContext
     public DbSet<GoldEntry> GoldEntries => Set<GoldEntry>();
     public DbSet<GivenMoiEntry> GivenMoiEntries => Set<GivenMoiEntry>();
     public DbSet<ConflictRecord> ConflictRecords => Set<ConflictRecord>();
+    public DbSet<PendingReturn> PendingReturns => Set<PendingReturn>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -142,6 +143,29 @@ public class MoiDbContext : DbContext
             entity.Property(u => u.PrivilegesJson).HasColumnName("privileges_json");
             entity.Property(u => u.IsActive).HasColumnName("is_active");
             entity.Property(u => u.CreatedAt).HasColumnName("created_at");
+        });
+
+        modelBuilder.Entity<PendingReturn>(entity =>
+        {
+            entity.ToTable("pending_returns");
+            entity.HasKey(p => p.Id);
+            entity.Property(p => p.Id).HasColumnName("id");
+            entity.Property(p => p.ContributorName).HasColumnName("contributor_name").IsRequired();
+            entity.Property(p => p.Village).HasColumnName("village");
+            entity.Property(p => p.ReceivedAmount).HasColumnName("received_amount").HasColumnType("decimal(19, 2)");
+            entity.Property(p => p.Occasion).HasColumnName("occasion");
+            entity.Property(p => p.Status).HasColumnName("status");
+            entity.Property(p => p.CreatedAt).HasColumnName("created_at");
+            entity.Property(p => p.ClosedAt).HasColumnName("closed_at");
+            entity.Property(p => p.Notes).HasColumnName("notes");
+            entity.Property(p => p.MoiTransactionId).HasColumnName("moi_transaction_id");
+            entity.Property(p => p.GivenMoiEntryId).HasColumnName("given_moi_entry_id");
+            entity.Property(p => p.EventId).HasColumnName("event_id");
+
+            entity.HasOne(p => p.Event)
+                .WithMany()
+                .HasForeignKey(p => p.EventId)
+                .OnDelete(DeleteBehavior.SetNull);
         });
     }
 }

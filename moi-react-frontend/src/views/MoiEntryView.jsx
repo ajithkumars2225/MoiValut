@@ -18,6 +18,7 @@ import {
     FileSpreadsheet,
     Printer,
     Upload,
+    Clock,
 } from 'lucide-react';
 import { MoiEntryModal } from '../components/modals/MoiEntryModal';
 import { ReceiptModal } from '../components/ReceiptModal';
@@ -42,9 +43,12 @@ export const MoiEntryView = ({
     event,
     transactions,
     givenEntries = [],
+    pendingReturns = [],
     onRecordMoi,
     onUpdateMoi,
     onDeleteMoi,
+    onCreatePendingReturn,
+    onOpenPendingView,
     settings = {},
     privileges,
 }) => {
@@ -57,6 +61,35 @@ export const MoiEntryView = ({
     const canAdd    = !privileges || privileges.add === true;
     const canEdit   = !privileges || privileges.edit === true;
     const canDelete = !privileges || privileges.delete === true;
+
+    const handleMarkPending = async (tx) => {
+        if (!onCreatePendingReturn) return;
+        try {
+            const data = {
+                contributorName: tx.contributorName,
+                village: tx.village || '',
+                receivedAmount: tx.amount || 0,
+                occasion: event?.name || 'விசேஷம்',
+                moiTransactionId: tx.transactionId,
+                eventId: tx.eventId || event?.eventId,
+                status: 'Pending',
+                notes: `Moi Entry பதிவு மூலம் நிலுவையில் வைக்கப்பட்டது.`,
+            };
+            await onCreatePendingReturn(data);
+            alert(`${tx.contributorName} அவர்களின் நிலுவை மொய் பதிவு வெற்றிகரமாக சேர்க்கப்பட்டது!`);
+        } catch (err) {
+            alert('Failed to mark pending return: ' + err.message);
+        }
+    };
+
+    const getPendingRecord = (tx) => {
+        return pendingReturns.find(
+            (p) =>
+                (p.moiTransactionId && p.moiTransactionId === tx.transactionId) ||
+                (p.contributorName?.trim().toLowerCase() === tx.contributorName?.trim().toLowerCase() &&
+                    p.status === 'Pending')
+        );
+    };
 
     // 🌐 PORTABLE FILTER & SEARCH STATES (URL & SESSION STORAGE SYNCED) 🌐
     const [searchQuery, setSearchQuery] = useState(() => getInitialState('search', ''));
@@ -1148,7 +1181,9 @@ export const MoiEntryView = ({
                                                 </div>
                                             </td>
                                         </tr>
-                                        {group.items.map((tx) => (
+                                        {group.items.map((tx) => {
+                                            const pendingRec = getPendingRecord(tx);
+                                            return (
                                             <tr key={tx.transactionId} className="table-row-hover grouped-item-row">
                                                 <td className="text-center" style={{ width: '40px' }}>
                                                     <input 
@@ -1159,7 +1194,22 @@ export const MoiEntryView = ({
                                                         style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
                                                     />
                                                 </td>
-                                                {visibleColumns.contributorName !== false && <td className="text-left font-semibold pl-6">{tx.contributorName}</td>}
+                                                {visibleColumns.contributorName !== false && (
+                                                    <td className="text-left font-semibold pl-6">
+                                                        <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                            <span>{tx.contributorName}</span>
+                                                            {pendingRec && (
+                                                                <button
+                                                                    onClick={onOpenPendingView}
+                                                                    style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', background: 'rgba(245,158,11,0.2)', color: '#FCD34D', border: '1px solid rgba(245,158,11,0.4)', cursor: 'pointer' }}
+                                                                    title="நிலுவையில் உள்ளது (Click to view Pending Returns)"
+                                                                >
+                                                                    <Clock size={10} /> நிலுவை
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
                                                 {visibleColumns.village !== false && <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>}
                                                 {visibleColumns.giftTerm !== false && <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>}
                                                 {visibleColumns.amount !== false && <td className="text-right amount-col">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>}
@@ -1179,7 +1229,7 @@ export const MoiEntryView = ({
                                                 )}
                                                 {visibleColumns.notes !== false && <td className="text-left text-xs">{tx.notes || '-'}</td>}
                                                 {visibleColumns.actions !== false && (
-                                                    <td className="text-center" style={{ whiteSpace: 'nowrap', width: '110px' }}>
+                                                    <td className="text-center" style={{ whiteSpace: 'nowrap', width: '130px' }}>
                                                         <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
                                                             <button
                                                                 title="Print Receipt (ரசீது அச்சிடு)"
@@ -1188,6 +1238,15 @@ export const MoiEntryView = ({
                                                             >
                                                                 <Printer size={14} />
                                                             </button>
+                                                            {canEdit && !pendingRec && (
+                                                                <button
+                                                                    title="Mark as Pending Return (நிலுவையில் வைக்க)"
+                                                                    onClick={() => handleMarkPending(tx)}
+                                                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.14)', color: '#FBBF24', transition: 'all 0.18s ease' }}
+                                                                >
+                                                                    <Clock size={14} />
+                                                                </button>
+                                                            )}
                                                             {canEdit && (
                                                                 <button
                                                                     title="Edit Cash Gift (திருத்து)"
@@ -1210,12 +1269,14 @@ export const MoiEntryView = ({
                                                     </td>
                                                 )}
                                             </tr>
-                                        ))}
+                                        );})}
                                     </React.Fragment>
                                 ))
                             ) : (
                                 /* UNGROUPED PAGINATED VIEW */
-                                paginatedTransactions.map((tx) => (
+                                paginatedTransactions.map((tx) => {
+                                    const pendingRec = getPendingRecord(tx);
+                                    return (
                                     <tr key={tx.transactionId} className="table-row-hover">
                                         <td className="text-center" style={{ width: '40px' }}>
                                             <input 
@@ -1226,7 +1287,22 @@ export const MoiEntryView = ({
                                                 style={{ cursor: 'pointer', transform: 'scale(1.1)' }}
                                             />
                                         </td>
-                                        {visibleColumns.contributorName !== false && <td className="text-left font-semibold">{tx.contributorName}</td>}
+                                        {visibleColumns.contributorName !== false && (
+                                            <td className="text-left font-semibold">
+                                                <div style={{ display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                                    <span>{tx.contributorName}</span>
+                                                    {pendingRec && (
+                                                        <button
+                                                            onClick={onOpenPendingView}
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '3px', padding: '2px 6px', borderRadius: '4px', fontSize: '10px', background: 'rgba(245,158,11,0.2)', color: '#FCD34D', border: '1px solid rgba(245,158,11,0.4)', cursor: 'pointer' }}
+                                                            title="நிலுவையில் உள்ளது (Click to view Pending Returns)"
+                                                        >
+                                                            <Clock size={10} /> நிலுவை
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                         {visibleColumns.village !== false && <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>}
                                         {visibleColumns.giftTerm !== false && <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>}
                                         {visibleColumns.amount !== false && <td className="text-right amount-col">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>}
@@ -1246,7 +1322,7 @@ export const MoiEntryView = ({
                                         )}
                                         {visibleColumns.notes !== false && <td className="text-left text-xs">{tx.notes || '-'}</td>}
                                         {visibleColumns.actions !== false && (
-                                            <td className="text-center" style={{ whiteSpace: 'nowrap', width: '110px' }}>
+                                            <td className="text-center" style={{ whiteSpace: 'nowrap', width: '130px' }}>
                                                 <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
                                                     <button
                                                         title="Print Receipt (ரசீது அச்சிடு)"
@@ -1255,6 +1331,15 @@ export const MoiEntryView = ({
                                                     >
                                                         <Printer size={14} />
                                                     </button>
+                                                    {canEdit && !pendingRec && (
+                                                        <button
+                                                            title="Mark as Pending Return (நிலுவையில் வைக்க)"
+                                                            onClick={() => handleMarkPending(tx)}
+                                                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(245,158,11,0.35)', background: 'rgba(245,158,11,0.14)', color: '#FBBF24', transition: 'all 0.18s ease' }}
+                                                        >
+                                                            <Clock size={14} />
+                                                        </button>
+                                                    )}
                                                     {canEdit && (
                                                         <button
                                                             title="Edit Cash Gift (திருத்து)"
@@ -1277,7 +1362,8 @@ export const MoiEntryView = ({
                                             </td>
                                         )}
                                     </tr>
-                                ))
+                                         );
+                                     })
                             )}
                         </tbody>
                     </table>

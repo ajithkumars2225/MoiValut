@@ -14,6 +14,7 @@ import { LoginView } from './views/LoginView';
 import { ConflictRecordsView } from './views/ConflictRecordsView';
 import { SettingsView } from './views/SettingsView';
 import { UserManagementView } from './views/UserManagementView';
+import { PendingReturnsView } from './views/PendingReturnsView';
 import { useUserSettings } from './hooks/useUserSettings';
 import { recordAuditLog } from './services/auditLogger';
 import { getCurrentUser, clearCurrentUser } from './services/userManager';
@@ -51,6 +52,7 @@ export function App() {
     const [transactions, setTransactions] = useState([]);
     const [givenEntries, setGivenEntries] = useState([]);
     const [goldEntries, setGoldEntries] = useState([]);
+    const [pendingReturns, setPendingReturns] = useState([]);
     const [conflictRecords, setConflictRecords] = useState([]);
     const [loading, setLoading] = useState(true);
     const [isOnline, setIsOnline] = useState(navigator.onLine);
@@ -162,6 +164,7 @@ export function App() {
         if (isLoggedIn) {
             loadEvents();
             loadAllConflicts();
+            loadPendingReturns();
         }
     }, [isLoggedIn]);
 
@@ -228,6 +231,90 @@ export function App() {
         } catch (err) {
             console.error('Error fetching conflict records:', err);
         }
+    };
+
+    const loadPendingReturns = async () => {
+        try {
+            const data = await api.getPendingReturns();
+            setPendingReturns(data);
+        } catch (err) {
+            console.error('Error fetching pending returns:', err);
+        }
+    };
+
+    const handleCreatePendingReturn = async (data) => {
+        const created = await api.createPendingReturn(data);
+        setPendingReturns((prev) => [created, ...prev]);
+        recordAuditLog({
+            actionType: 'CREATE',
+            module: 'PendingReturns',
+            recordName: data.contributorName,
+            village: data.village || '-',
+            newValue: {
+                'பெயர்': data.contributorName,
+                'ஊர்': data.village || '-',
+                'வந்த தொகை': data.receivedAmount,
+                'விசேஷம்': data.occasion
+            },
+            details: `${data.contributorName} என்பவரின் நிலுவை மொய் பதிவு சேர்க்கப்பட்டது.`
+        });
+        return created;
+    };
+
+    const handleClosePendingWithEntry = async (pendingId, givenMoiData) => {
+        const newGiven = await api.recordGivenMoi(givenMoiData);
+        setGivenEntries((prev) => [newGiven, ...prev]);
+
+        const updateData = {
+            status: 'ClosedWithEntry',
+            closedAt: new Date().toISOString(),
+            givenMoiEntryId: newGiven.givenMoiEntryId || newGiven.id,
+            notes: givenMoiData.notes || 'Closed with Given Moi Entry',
+        };
+        const updatedPending = await api.updatePendingReturn(pendingId, updateData);
+        setPendingReturns((prev) =>
+            prev.map((p) => (p.id === pendingId || p.pendingReturnId === pendingId ? updatedPending : p))
+        );
+
+        recordAuditLog({
+            actionType: 'UPDATE',
+            module: 'PendingReturns',
+            recordName: givenMoiData.recipientName,
+            village: givenMoiData.village || '-',
+            newValue: {
+                'நிலை': 'ClosedWithEntry',
+                'செய்த மொய் தொகை': givenMoiData.amount,
+                'விசேஷம்': givenMoiData.occasion
+            },
+            details: `${givenMoiData.recipientName} நிலுவை மொய் செய்யப் பட்டு முடித்து வைக்கப்பட்டது.`
+        });
+    };
+
+    const handleClosePendingWithoutEntry = async (pendingId, notes) => {
+        const updateData = {
+            status: 'ClosedWithoutEntry',
+            closedAt: new Date().toISOString(),
+            notes: notes || 'Closed without entry',
+        };
+        const updatedPending = await api.updatePendingReturn(pendingId, updateData);
+        setPendingReturns((prev) =>
+            prev.map((p) => (p.id === pendingId || p.pendingReturnId === pendingId ? updatedPending : p))
+        );
+
+        recordAuditLog({
+            actionType: 'UPDATE',
+            module: 'PendingReturns',
+            newValue: {
+                'நிலை': 'ClosedWithoutEntry',
+                'குறிப்புகள்': notes
+            },
+            details: `நிலுவை மொய் இன்றி நேரடியாக முடித்து வைக்கப்பட்டது.`
+        });
+    };
+
+    const handleDeletePendingReturn = async (id) => {
+        await api.deletePendingReturn(id);
+        setPendingReturns((prev) => prev.filter((p) => p.id !== id && p.pendingReturnId !== id));
     };
 
     const handleLogout = () => {
@@ -637,9 +724,12 @@ export function App() {
                             event={activeEvent}
                             transactions={transactions}
                             givenEntries={givenEntries}
+                            pendingReturns={pendingReturns}
                             onRecordMoi={handleRecordMoi}
                             onUpdateMoi={handleUpdateMoi}
                             onDeleteMoi={handleDeleteMoi}
+                            onCreatePendingReturn={handleCreatePendingReturn}
+                            onOpenPendingView={() => setActiveView('pending_returns')}
                             settings={settings}
                             privileges={currentUser?.privileges?.moi}
                         />
@@ -654,6 +744,20 @@ export function App() {
                             onDeleteGivenMoi={handleDeleteGivenMoi}
                             settings={settings}
                             privileges={currentUser?.privileges?.given_moi}
+                        />
+                    )}
+
+                    {activeView === 'pending_returns' && (
+                        <PendingReturnsView
+                            pendingReturns={pendingReturns}
+                            onCreatePendingReturn={handleCreatePendingReturn}
+                            onUpdatePendingReturn={api.updatePendingReturn}
+                            onClosePendingWithEntry={handleClosePendingWithEntry}
+                            onClosePendingWithoutEntry={handleClosePendingWithoutEntry}
+                            onDeletePendingReturn={handleDeletePendingReturn}
+                            events={events}
+                            selectedEventId={activeEvent?.id}
+                            privileges={currentUser?.privileges?.given_moi || currentUser?.privileges?.moi}
                         />
                     )}
 
