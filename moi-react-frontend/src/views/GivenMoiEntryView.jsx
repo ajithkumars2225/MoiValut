@@ -24,6 +24,8 @@ import {
 import { GivenMoiModal } from '../components/modals/GivenMoiModal';
 import { TransliteratedInput } from '../components/TransliteratedInput';
 import { BulkUploadModal } from '../components/modals/BulkUploadModal';
+import { ColumnToggleDropdown } from '../components/ColumnToggleDropdown';
+import { SortableTh } from '../components/SortableTh';
 
 // Helper for Filter State Portability (URL Query Params & Session Storage)
 const getInitialState = (key, fallback) => {
@@ -57,7 +59,14 @@ export const GivenMoiEntryView = ({
     // 🌐 PORTABLE FILTER & SEARCH STATES (URL & SESSION STORAGE SYNCED) 🌐
     const [searchQuery, setSearchQuery] = useState(() => getInitialState('search', ''));
     const [selectedVillage, setSelectedVillage] = useState(() => getInitialState('village', ''));
-    const [amountRange, setAmountRange] = useState(() => getInitialState('amount', 'all'));
+    const [selectedOccasion, setSelectedOccasion] = useState('all');
+    const [selectedGiftType, setSelectedGiftType] = useState('all');
+    const [selectedTerm, setSelectedTerm] = useState('all');
+    const [amountOp, setAmountOp] = useState('all'); // 'all' | '=' | '>' | '>=' | '<' | '<=' | '!=' | 'between'
+    const [amountVal, setAmountVal] = useState('');
+    const [minAmount, setMinAmount] = useState('');
+    const [maxAmount, setMaxAmount] = useState('');
+    const [notesQuery, setNotesQuery] = useState('');
     const [groupBy, setGroupBy] = useState(() => getInitialState('group', 'none')); // 'none' | 'village' | 'occasion'
     const [isFilterExpanded, setIsFilterExpanded] = useState(() => getInitialState('expanded', 'false') === 'true');
 
@@ -71,14 +80,12 @@ export const GivenMoiEntryView = ({
             const params = new URLSearchParams();
             if (searchQuery) params.set('search', searchQuery);
             if (selectedVillage) params.set('village', selectedVillage);
-            if (amountRange && amountRange !== 'all') params.set('amount', amountRange);
             if (groupBy && groupBy !== 'none') params.set('group', groupBy);
             if (currentPage > 1) params.set('page', currentPage);
             if (pageSize !== 20) params.set('pageSize', pageSize);
 
             sessionStorage.setItem('given_filter_search', searchQuery);
             sessionStorage.setItem('given_filter_village', selectedVillage);
-            sessionStorage.setItem('given_filter_amount', amountRange);
             sessionStorage.setItem('given_filter_group', groupBy);
             sessionStorage.setItem('given_filter_expanded', isFilterExpanded.toString());
             sessionStorage.setItem('given_filter_page', currentPage.toString());
@@ -90,7 +97,7 @@ export const GivenMoiEntryView = ({
         } catch (e) {
             console.error('Error syncing filter state:', e);
         }
-    }, [searchQuery, selectedVillage, amountRange, groupBy, isFilterExpanded, currentPage, pageSize]);
+    }, [searchQuery, selectedVillage, groupBy, isFilterExpanded, currentPage, pageSize]);
 
     // Unique Villages List
     const uniqueVillages = useMemo(() => {
@@ -101,7 +108,25 @@ export const GivenMoiEntryView = ({
         return Array.from(set).sort();
     }, [givenEntries]);
 
-    // Filtering Logic
+    // Unique Occasions List
+    const uniqueOccasions = useMemo(() => {
+        const set = new Set();
+        givenEntries.forEach((tx) => {
+            if (tx.occasion) set.add(tx.occasion);
+        });
+        return Array.from(set).sort();
+    }, [givenEntries]);
+
+    // Unique Terms List
+    const uniqueTerms = useMemo(() => {
+        const set = new Set();
+        givenEntries.forEach((tx) => {
+            if (tx.giftTerm) set.add(tx.giftTerm);
+        });
+        return Array.from(set).sort();
+    }, [givenEntries]);
+
+    // Comprehensive Filtering Logic across all columns with Mathematical Amount Operations
     const filteredEntries = useMemo(() => {
         return givenEntries.filter((tx) => {
             const q = searchQuery.toLowerCase().trim();
@@ -111,29 +136,156 @@ export const GivenMoiEntryView = ({
                 const matchOccasion = tx.occasion && tx.occasion.toLowerCase().includes(q);
                 const matchGold = tx.goldDetails && tx.goldDetails.toLowerCase().includes(q);
                 const matchAmount = tx.amount.toString().includes(q);
-                if (!matchName && !matchVillage && !matchOccasion && !matchGold && !matchAmount) return false;
+                const matchNotes = tx.notes && tx.notes.toLowerCase().includes(q);
+                if (!matchName && !matchVillage && !matchOccasion && !matchGold && !matchAmount && !matchNotes) return false;
             }
 
-            if (selectedVillage && tx.village !== selectedVillage) {
-                return false;
-            }
+            if (selectedVillage && tx.village !== selectedVillage) return false;
+            if (selectedOccasion && selectedOccasion !== 'all' && (tx.occasion || '') !== selectedOccasion) return false;
+            if (selectedGiftType && selectedGiftType !== 'all' && (tx.giftType || 'Cash') !== selectedGiftType) return false;
+            if (selectedTerm && selectedTerm !== 'all' && (tx.giftTerm || '1st Time') !== selectedTerm) return false;
 
+            // Mathematical Amount Operations Filter
             const amt = Number(tx.amount || 0);
-            if (amountRange === '<500' && amt >= 500) return false;
-            if (amountRange === '501-2000' && (amt < 501 || amt > 2000)) return false;
-            if (amountRange === '2001-5000' && (amt < 2001 || amt > 5000)) return false;
-            if (amountRange === '>5000' && amt <= 5000) return false;
+            if (amountOp === '=') {
+                if (amountVal !== '' && amt !== Number(amountVal)) return false;
+            } else if (amountOp === '>') {
+                if (amountVal !== '' && amt <= Number(amountVal)) return false;
+            } else if (amountOp === '>=') {
+                if (amountVal !== '' && amt < Number(amountVal)) return false;
+            } else if (amountOp === '<') {
+                if (amountVal !== '' && amt >= Number(amountVal)) return false;
+            } else if (amountOp === '<=') {
+                if (amountVal !== '' && amt > Number(amountVal)) return false;
+            } else if (amountOp === '!=') {
+                if (amountVal !== '' && amt === Number(amountVal)) return false;
+            } else if (amountOp === 'between') {
+                if (minAmount !== '' && amt < Number(minAmount)) return false;
+                if (maxAmount !== '' && amt > Number(maxAmount)) return false;
+            }
+
+            if (notesQuery.trim()) {
+                const nq = notesQuery.toLowerCase().trim();
+                if (!tx.notes || !tx.notes.toLowerCase().includes(nq)) return false;
+            }
 
             return true;
         });
-    }, [givenEntries, searchQuery, selectedVillage, amountRange]);
+    }, [givenEntries, searchQuery, selectedVillage, selectedOccasion, selectedGiftType, selectedTerm, amountOp, amountVal, minAmount, maxAmount, notesQuery]);
+
+    // Reset Filters Helper
+    const handleResetFilters = () => {
+        setSearchQuery('');
+        setSelectedVillage('');
+        setSelectedOccasion('all');
+        setSelectedGiftType('all');
+        setSelectedTerm('all');
+        setAmountOp('all');
+        setAmountVal('');
+        setMinAmount('');
+        setMaxAmount('');
+        setNotesQuery('');
+        setGroupBy('none');
+        setCurrentPage(1);
+    };
+
+    // 📊 TABLE COLUMN CONFIGURATION & VISIBILITY 📊
+    const GIVEN_MOI_COLUMNS = [
+        { id: 'recipientName', labelEn: 'Recipient Name', labelTa: 'பெயர்' },
+        { id: 'village', labelEn: 'Village', labelTa: 'ஊர்' },
+        { id: 'occasion', labelEn: 'Occasion / Function', labelTa: 'சுபநிகழ்ச்சி' },
+        { id: 'giftTerm', labelEn: 'Gift Term', labelTa: 'முறை' },
+        { id: 'amount', labelEn: 'Given Amount', labelTa: 'நாம் கொடுத்த தொகை ₹' },
+        { id: 'givenDate', labelEn: 'Given Date', labelTa: 'கொடுத்த தேதி' },
+        { id: 'notes', labelEn: 'Notes', labelTa: 'குறிப்பு', defaultVisible: false },
+        { id: 'actions', labelEn: 'Actions', labelTa: 'செயல்கள்' }
+    ];
+
+    const [visibleColumns, setVisibleColumns] = useState(() => {
+        try {
+            const saved = localStorage.getItem('given_visible_columns');
+            return saved ? JSON.parse(saved) : {
+                recipientName: true,
+                village: true,
+                occasion: true,
+                giftTerm: true,
+                amount: true,
+                givenDate: true,
+                notes: false,
+                actions: true
+            };
+        } catch {
+            return {
+                recipientName: true,
+                village: true,
+                occasion: true,
+                giftTerm: true,
+                amount: true,
+                givenDate: true,
+                notes: false,
+                actions: true
+            };
+        }
+    });
+
+    const handleVisibleColumnsChange = (newCols) => {
+        setVisibleColumns(newCols);
+        try {
+            localStorage.setItem('given_visible_columns', JSON.stringify(newCols));
+        } catch (e) {
+            console.error(e);
+        }
+    };
+
+    // 🔀 SORTING STATE 🔀
+    const [sortField, setSortField] = useState('givenDate');
+    const [sortDirection, setSortDirection] = useState('desc');
+
+    const handleSort = (field) => {
+        if (sortField === field) {
+            setSortDirection(prev => prev === 'asc' ? 'desc' : 'asc');
+        } else {
+            setSortField(field);
+            setSortDirection('asc');
+        }
+    };
+
+    const sortedEntries = useMemo(() => {
+        if (!sortField || !sortDirection) return filteredEntries;
+
+        return [...filteredEntries].sort((a, b) => {
+            let valA = a[sortField];
+            let valB = b[sortField];
+
+            if (valA === undefined || valA === null) valA = '';
+            if (valB === undefined || valB === null) valB = '';
+
+            if (sortField === 'amount') {
+                valA = Number(valA || 0);
+                valB = Number(valB || 0);
+            } else if (sortField === 'givenDate') {
+                valA = new Date(valA).getTime() || 0;
+                valB = new Date(valB).getTime() || 0;
+            } else {
+                valA = valA.toString().toLowerCase();
+                valB = valB.toString().toLowerCase();
+                return sortDirection === 'asc'
+                    ? valA.localeCompare(valB, 'ta')
+                    : valB.localeCompare(valA, 'ta');
+            }
+
+            if (valA < valB) return sortDirection === 'asc' ? -1 : 1;
+            if (valA > valB) return sortDirection === 'asc' ? 1 : -1;
+            return 0;
+        });
+    }, [filteredEntries, sortField, sortDirection]);
 
     // Grouping Logic
     const groupedData = useMemo(() => {
         if (groupBy === 'none') return null;
 
         const groups = {};
-        filteredEntries.forEach((tx) => {
+        sortedEntries.forEach((tx) => {
             const key = groupBy === 'village' ? (tx.village || 'Unspecified Village') : (tx.occasion || 'General Occasion');
             if (!groups[key]) {
                 groups[key] = { key, items: [], totalAmount: 0 };
@@ -143,31 +295,19 @@ export const GivenMoiEntryView = ({
         });
 
         return Object.values(groups).sort((a, b) => b.totalAmount - a.totalAmount);
-    }, [filteredEntries, groupBy]);
+    }, [sortedEntries, groupBy]);
 
     // Pagination Calculation
-    const totalRecords = filteredEntries.length;
+    const totalRecords = sortedEntries.length;
     const totalPages = Math.ceil(totalRecords / pageSize) || 1;
     const paginatedEntries = useMemo(() => {
-        if (groupBy !== 'none') return filteredEntries;
+        if (groupBy !== 'none') return sortedEntries;
         const startIndex = (currentPage - 1) * pageSize;
-        return filteredEntries.slice(startIndex, startIndex + pageSize);
-    }, [filteredEntries, currentPage, pageSize, groupBy]);
+        return sortedEntries.slice(startIndex, startIndex + pageSize);
+    }, [sortedEntries, currentPage, pageSize, groupBy]);
 
     const totalGivenCash = givenEntries.reduce((sum, t) => sum + Number(t.amount || 0), 0);
     const filteredGivenCash = filteredEntries.reduce((sum, t) => sum + Number(t.amount || 0), 0);
-
-    const handleResetFilters = () => {
-        setSearchQuery('');
-        setSelectedVillage('');
-        setAmountRange('all');
-        setGroupBy('none');
-        setCurrentPage(1);
-        setPageSize(20);
-        sessionStorage.clear();
-        window.history.replaceState(null, '', window.location.pathname);
-    };
-
     const handleOpenAdd = () => {
         setEditingEntry(null);
         setIsModalOpen(true);
@@ -186,9 +326,48 @@ export const GivenMoiEntryView = ({
         }
     };
 
+    // Helper to generate dynamic PDF table header according to visibleColumns
+    const getPdfHeaderHtml = () => {
+        let ths = `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: center;"># (வ.எண்)</th>`;
+        if (visibleColumns.recipientName !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: left;">Recipient Name (பெறுபவர் பெயர்)</th>`;
+        if (visibleColumns.village !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: left;">Village (ஊர் பெயர்)</th>`;
+        if (visibleColumns.occasion !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: left;">Occasion (சுபநிகழ்ச்சி)</th>`;
+        if (visibleColumns.giftTerm !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: center;">Gift Term (முறை)</th>`;
+        if (visibleColumns.amount !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: right;">Amount Given (கொடுத்த தொகை ₹)</th>`;
+        if (visibleColumns.givenDate !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: right;">Given Date (கொடுத்த தேதி)</th>`;
+        if (visibleColumns.notes !== false) ths += `<th style="background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; text-align: left;">Notes (குறிப்பு)</th>`;
+        return `<tr>${ths}</tr>`;
+    };
+
+    // Helper to generate dynamic PDF row according to visibleColumns
+    const getPdfRowHtml = (tx, idx) => {
+        let tds = `<td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px;">${idx + 1}</td>`;
+        if (visibleColumns.recipientName !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; font-weight: bold; font-size: 12px;">${tx.recipientName} ${tx.giftType === 'Gold' ? `<br/><span style="font-size: 10px; color: #D97706; font-weight: normal;">🪙 ${tx.goldDetails || 'Gold'}</span>` : ''}</td>`;
+        if (visibleColumns.village !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.village || '-'}</td>`;
+        if (visibleColumns.occasion !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.occasion || '-'}</td>`;
+        if (visibleColumns.giftTerm !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px;">${tx.giftTerm || '1st Time'}</td>`;
+        if (visibleColumns.amount !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-weight: bold; color: #7C3AED; font-size: 12px;">₹ ${Number(tx.amount).toLocaleString('en-IN')}</td>`;
+        if (visibleColumns.givenDate !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-size: 10px; color: #6B7280;">${new Date(tx.givenDate).toLocaleDateString('en-IN')}</td>`;
+        if (visibleColumns.notes !== false) tds += `<td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.notes || '-'}</td>`;
+        return `<tr>${tds}</tr>`;
+    };
+
+    // Helper to generate dynamic Excel object according to visibleColumns
+    const getExcelRowObject = (tx, idx) => {
+        const row = { 'S.No (வ.எண்)': idx + 1 };
+        if (visibleColumns.recipientName !== false) row['Recipient Name (பெறுபவர் பெயர்)'] = tx.recipientName;
+        if (visibleColumns.village !== false) row['Village (ஊர் பெயர்)'] = tx.village || '-';
+        if (visibleColumns.occasion !== false) row['Occasion (சுபநிகழ்ச்சி)'] = tx.occasion || '-';
+        if (visibleColumns.giftTerm !== false) row['Gift Term (முறை)'] = tx.giftTerm || '1st Time';
+        if (visibleColumns.amount !== false) row['Amount Given (கொடுத்த தொகை ₹)'] = Number(tx.amount || 0);
+        if (visibleColumns.givenDate !== false) row['Given Date (கொடுத்த தேதி)'] = new Date(tx.givenDate).toLocaleDateString('en-IN');
+        if (visibleColumns.notes !== false) row['Notes (குறிப்பு)'] = tx.notes || '';
+        return row;
+    };
+
     // Excel Export (Filtered dataset + Multi-sheet tabs when grouped by Village)
     const handleExportExcel = () => {
-        if (filteredEntries.length === 0) {
+        if (sortedEntries.length === 0) {
             window.customAlert('No filtered records available to export.');
             return;
         }
@@ -208,36 +387,13 @@ export const GivenMoiEntryView = ({
 
             // Individual Village Tabs
             groupedData.forEach((group) => {
-                const sheetData = group.items.map((tx, idx) => ({
-                    'S.No': idx + 1,
-                    'Recipient Name (பெயர்)': tx.recipientName,
-                    'Village (ஊர்)': tx.village || '-',
-                    'Gift Type (வகை)': tx.giftType || 'Cash',
-                    'Gold Details (பொன் விபரம்)': tx.goldDetails || '-',
-                    'Occasion (சுபநிகழ்ச்சி)': tx.occasion || '-',
-                    'Gift Term (முறை)': tx.giftTerm || '1st Time',
-                    'Amount Given (₹)': Number(tx.amount || 0),
-                    'Given Date': new Date(tx.givenDate).toLocaleDateString('en-IN'),
-                    'Notes': tx.notes || '-'
-                }));
+                const sheetData = group.items.map((tx, idx) => getExcelRowObject(tx, idx));
                 const sheet = XLSX.utils.json_to_sheet(sheetData);
                 const safeTabName = group.key.replace(/[\\/?*\[\]]/g, '').slice(0, 30);
                 XLSX.utils.book_append_sheet(workbook, sheet, safeTabName);
             });
         } else {
-            const exportData = filteredEntries.map((tx, idx) => ({
-                'S.No': idx + 1,
-                'Recipient Name (பெயர்)': tx.recipientName,
-                'Village (ஊர்)': tx.village || '-',
-                'Gift Type (வகை)': tx.giftType || 'Cash',
-                'Gold Details (பொன் விபரம்)': tx.goldDetails || '-',
-                'Occasion (சுபநிகழ்ச்சி)': tx.occasion || '-',
-                'Gift Term (முறை)': tx.giftTerm || '1st Time',
-                'Amount Given (₹)': Number(tx.amount || 0),
-                'Given Date': new Date(tx.givenDate).toLocaleDateString('en-IN'),
-                'Notes': tx.notes || '-'
-            }));
-
+            const exportData = sortedEntries.map((tx, idx) => getExcelRowObject(tx, idx));
             const worksheet = XLSX.utils.json_to_sheet(exportData);
             XLSX.utils.book_append_sheet(workbook, worksheet, 'Given_Moi_Gifts');
         }
@@ -248,7 +404,7 @@ export const GivenMoiEntryView = ({
 
     // PDF Export (Filtered dataset + Separate physical page per village when grouped)
     const handleExportPDF = () => {
-        if (filteredEntries.length === 0) {
+        if (sortedEntries.length === 0) {
             window.customAlert('No filtered records available to export.');
             return;
         }
@@ -257,102 +413,207 @@ export const GivenMoiEntryView = ({
         let bodyHtml = '';
 
         if (groupBy === 'village' && groupedData) {
-            bodyHtml = groupedData.map((group, gIdx) => {
-                const rowsHtml = group.items.map((tx, idx) => `
-                    <tr>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px;">${idx + 1}</td>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; font-weight: bold; font-size: 12px;">
-                            ${tx.recipientName}
-                            ${tx.giftType === 'Gold' ? `<br/><span style="font-size: 10px; color: #D97706; font-weight: normal;">🪙 ${tx.goldDetails || 'Gold'}</span>` : ''}
-                        </td>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.village || '-'}</td>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.occasion || '-'}</td>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px;">${tx.giftTerm || '1st Time'}</td>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-weight: bold; color: #7C3AED; font-size: 12px;">₹ ${Number(tx.amount).toLocaleString('en-IN')}</td>
-                        <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-size: 10px; color: #6B7280;">${new Date(tx.givenDate).toLocaleDateString('en-IN')}</td>
-                    </tr>
-                `).join('');
+            const ROWS_PER_FIRST_PAGE = 26; // First page of village (has summary box)
+            const ROWS_PER_SUB_PAGE = 30;   // Continuation pages of same village
 
-                return `
-                    <div class="village-page" style="${gIdx < groupedData.length - 1 ? 'page-break-after: always; break-after: page;' : ''}">
-                        <div class="header">
+            let currentSheetNumber = 1; // Sheet 1 is Index Page
+            const villageIndexList = [];
+            const villagePageBlocksHtml = [];
+
+            groupedData.forEach((group) => {
+                const items = group.items;
+                const villageStartPage = currentSheetNumber + 1;
+
+                // Break village items into chunked arrays per sheet
+                const chunks = [];
+                if (items.length <= ROWS_PER_FIRST_PAGE) {
+                    chunks.push(items);
+                } else {
+                    chunks.push(items.slice(0, ROWS_PER_FIRST_PAGE));
+                    let offset = ROWS_PER_FIRST_PAGE;
+                    while (offset < items.length) {
+                        chunks.push(items.slice(offset, offset + ROWS_PER_SUB_PAGE));
+                        offset += ROWS_PER_SUB_PAGE;
+                    }
+                }
+
+                const villageEndPage = villageStartPage + chunks.length - 1;
+
+                villageIndexList.push({
+                    village: group.key,
+                    count: items.length,
+                    totalAmount: group.totalAmount,
+                    startPage: villageStartPage,
+                    endPage: villageEndPage,
+                    totalPagesForVillage: chunks.length
+                });
+
+                chunks.forEach((chunkItems, cIdx) => {
+                    currentSheetNumber++;
+                    const pageNo = currentSheetNumber;
+                    const isMultiPage = chunks.length > 1;
+                    const pagePartLabel = isMultiPage ? ` (பாகம் ${cIdx + 1}/${chunks.length})` : '';
+                    const globalStartIndex = cIdx === 0 ? 0 : ROWS_PER_FIRST_PAGE + (cIdx - 1) * ROWS_PER_SUB_PAGE;
+
+                    const rowsHtml = chunkItems.map((tx, idx) => getPdfRowHtml(tx, globalStartIndex + idx)).join('');
+
+                    villagePageBlocksHtml.push(`
+                        <div class="print-sheet-block" style="page-break-after: always; break-after: page; box-sizing: border-box; padding-bottom: 6px;">
+                            <div class="village-header-top-center" style="text-align: center; margin-bottom: 10px; border-bottom: 2px solid #7C3AED; padding-bottom: 6px;">
+                                <div style="font-size: 22px; font-weight: 900; color: #6D28D9; text-transform: uppercase; letter-spacing: 0.5px;">
+                                    📍 ஊர்: ${group.key}${pagePartLabel}
+                                </div>
+                                <div style="font-size: 13px; font-weight: 700; color: #374151; margin-top: 3px;">
+                                    Given Moi Ledger (நாம் செய்த மொய் பட்டியல்)
+                                </div>
+                            </div>
+
+                            ${cIdx === 0 ? `
+                                <div class="summary-box" style="justify-content: center; background: #F3F4F6; padding: 8px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 12px; border: 1px solid #E5E7EB; display: flex; gap: 20px;">
+                                    <div class="summary-item">மொத்த பதிவுகள்: <strong>${group.items.length}</strong></div>
+                                    <div class="summary-item">ஊர் மொத்த தொகைக் கொடுத்தது: <span class="summary-val" style="color: #7C3AED; font-weight: 800; font-size: 14px;">₹ ${group.totalAmount.toLocaleString('en-IN')}</span></div>
+                                </div>
+                            ` : ''}
+
                             <div>
-                                <h2>Given Moi Ledger (நாம் செய்த மொய்) - Village Report</h2>
-                                <div class="meta">Village (ஊர்): <strong>${group.key}</strong> &nbsp;|&nbsp; Printed: ${new Date().toLocaleString('en-IN')}</div>
+                                <table style="width: 100%; border-collapse: collapse;">
+                                    <thead>
+                                        ${getPdfHeaderHtml()}
+                                    </thead>
+                                    <tbody>
+                                        ${rowsHtml}
+                                    </tbody>
+                                </table>
+                            </div>
+
+                            <div class="sheet-explicit-footer" style="margin-top: 14px; border-top: 2px solid #7C3AED; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; background: #FFF;">
+                                <span style="font-weight: 800; color: #6D28D9; font-size: 11px;">Given Moi Ledger &nbsp;|&nbsp; ஊர்: ${group.key}${pagePartLabel}</span>
+                                <span style="font-size: 13px; font-weight: 900; color: #111827; background: #F3F4F6; padding: 3px 12px; border-radius: 6px; border: 1px solid #CBD5E1;">
+                                    பக்கம் ${pageNo} / __TOTAL_PAGES__
+                                </span>
                             </div>
                         </div>
+                    `);
+                });
+            });
 
-                        <div class="summary-box">
-                            <div class="summary-item">Village Total Given: <span class="summary-val">₹ ${group.totalAmount.toLocaleString('en-IN')}</span></div>
-                            <div class="summary-item">Total Entries: <strong>${group.items.length}</strong></div>
-                        </div>
+            const totalDocPages = currentSheetNumber;
 
-                        <table>
-                            <thead>
-                                <tr>
-                                    <th>#</th>
-                                    <th>Recipient Name (பெயர்)</th>
-                                    <th>Village (ஊர்)</th>
-                                    <th>Occasion (சுபநிகழ்ச்சி)</th>
-                                    <th>Term (முறை)</th>
-                                    <th>Amount Given (₹)</th>
-                                    <th>Given Date</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                ${rowsHtml}
-                            </tbody>
-                        </table>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            const rowsHtml = filteredEntries.map((tx, idx) => `
+            // Generate Index Rows
+            const indexRowsHtml = villageIndexList.map((idxItem, idx) => `
                 <tr>
                     <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px;">${idx + 1}</td>
-                    <td style="padding: 7px; border: 1px solid #E5E7EB; font-weight: bold; font-size: 12px;">
-                        ${tx.recipientName}
-                        ${tx.giftType === 'Gold' ? `<br/><span style="font-size: 10px; color: #D97706; font-weight: normal;">🪙 ${tx.goldDetails || 'Gold'}</span>` : ''}
+                    <td style="padding: 7px; border: 1px solid #E5E7EB; font-weight: bold; font-size: 12px; color: #6D28D9;">${idxItem.village}</td>
+                    <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px; font-weight: 600;">${idxItem.count}</td>
+                    <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-weight: bold; color: #7C3AED; font-size: 12px;">₹ ${idxItem.totalAmount.toLocaleString('en-IN')}</td>
+                    <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-weight: bold; color: #4F46E5; font-size: 11px;">
+                        ${idxItem.startPage === idxItem.endPage ? `பக்கம் ${idxItem.startPage}` : `பக்கம் ${idxItem.startPage} - ${idxItem.endPage}`}
                     </td>
-                    <td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.village || '-'}</td>
-                    <td style="padding: 7px; border: 1px solid #E5E7EB; font-size: 11px;">${tx.occasion || '-'}</td>
-                    <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: center; font-size: 11px;">${tx.giftTerm || '1st Time'}</td>
-                    <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-weight: bold; color: #7C3AED; font-size: 12px;">₹ ${Number(tx.amount).toLocaleString('en-IN')}</td>
-                    <td style="padding: 7px; border: 1px solid #E5E7EB; text-align: right; font-size: 10px; color: #6B7280;">${new Date(tx.givenDate).toLocaleDateString('en-IN')}</td>
                 </tr>
             `).join('');
 
-            bodyHtml = `
-                <div class="header">
+            const indexPageHtml = `
+                <div class="print-sheet-block index-page" style="page-break-after: always; break-after: page; box-sizing: border-box; padding-bottom: 6px;">
+                    <div style="text-align: center; margin-bottom: 14px; border-bottom: 2px solid #7C3AED; padding-bottom: 8px;">
+                        <div style="font-size: 22px; font-weight: 900; color: #6D28D9; text-transform: uppercase; letter-spacing: 0.5px;">
+                            📜 கிராமங்கள் பொருளடக்கம் (Village Index Page)
+                        </div>
+                        <div style="font-size: 13px; font-weight: 700; color: #374151; margin-top: 3px;">
+                            Given Moi Ledger (நாம் செய்த மொய் விவரங்கள்)
+                        </div>
+                    </div>
+
+                    <div class="summary-box" style="justify-content: center; background: #F3F4F6; padding: 10px 16px; border-radius: 8px; font-size: 12px; margin-bottom: 14px; border: 1px solid #E5E7EB; display: flex; gap: 24px;">
+                        <div class="summary-item">மொத்த ஊர்கள்: <strong style="font-size: 14px; color: #6D28D9;">${groupedData.length}</strong></div>
+                        <div class="summary-item">மொத்த பதிவுகள்: <strong style="font-size: 14px; color: #111827;">${sortedEntries.length}</strong></div>
+                        <div class="summary-item">மொத்த கொடுத்தது: <span style="color: #7C3AED; font-weight: 800; font-size: 14px;">₹ ${filteredGivenCash.toLocaleString('en-IN')}</span></div>
+                    </div>
+
                     <div>
-                        <h2>Given Moi Ledger (நாம் செய்த மொய் பட்டியல்)</h2>
-                        <div class="meta">Generated on: ${new Date().toLocaleString('en-IN')}</div>
+                        <table style="width: 100%; border-collapse: collapse;">
+                            <thead>
+                                <tr>
+                                    <th style="background: #7C3AED; color: white; padding: 8px; font-size: 11px; border: 1px solid #6D28D9; text-align: center;">#</th>
+                                    <th style="background: #7C3AED; color: white; padding: 8px; font-size: 11px; border: 1px solid #6D28D9; text-align: left;">Village (ஊர் பெயர்)</th>
+                                    <th style="background: #7C3AED; color: white; padding: 8px; font-size: 11px; border: 1px solid #6D28D9; text-align: center;">Entries (எண்ணிக்கை)</th>
+                                    <th style="background: #7C3AED; color: white; padding: 8px; font-size: 11px; border: 1px solid #6D28D9; text-align: right;">Total Amount Given (தொகை ₹)</th>
+                                    <th style="background: #7C3AED; color: white; padding: 8px; font-size: 11px; border: 1px solid #6D28D9; text-align: center;">Start Page (பக்கம்)</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${indexRowsHtml}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <div class="sheet-explicit-footer" style="margin-top: 14px; border-top: 2px solid #7C3AED; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; background: #FFF;">
+                        <span style="font-weight: 800; color: #6D28D9; font-size: 11px;">Given Moi Ledger &nbsp;|&nbsp; பொருளடக்கம்</span>
+                        <span style="font-size: 13px; font-weight: 900; color: #111827; background: #F3F4F6; padding: 3px 12px; border-radius: 6px; border: 1px solid #CBD5E1;">
+                            பக்கம் 1 / ${totalDocPages}
+                        </span>
                     </div>
                 </div>
-
-                <div class="summary-box">
-                    <div class="summary-item">Filtered Total Given: <span class="summary-val">₹ ${filteredGivenCash.toLocaleString('en-IN')}</span></div>
-                    <div class="summary-item">Total Given Overall: <span class="summary-val" style="color: #6D28D9;">₹ ${totalGivenCash.toLocaleString('en-IN')}</span></div>
-                    <div class="summary-item">Entries: <strong>${filteredEntries.length}</strong></div>
-                </div>
-
-                <table>
-                    <thead>
-                        <tr>
-                            <th>#</th>
-                            <th>Recipient Name (பெயர்)</th>
-                            <th>Village (ஊர்)</th>
-                            <th>Occasion (சுபநிகழ்ச்சி)</th>
-                            <th>Term (முறை)</th>
-                            <th>Amount Given (₹)</th>
-                            <th>Given Date</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        ${rowsHtml}
-                    </tbody>
-                </table>
             `;
+
+            // Replace total pages placeholder in all village pages
+            bodyHtml = indexPageHtml + villagePageBlocksHtml.join('').replace(/__TOTAL_PAGES__/g, totalDocPages);
+        } else {
+            // Standard Single PDF Report for Filtered Dataset - Chunk into 30 items per sheet
+            const ROWS_PER_PAGE = 30;
+            const chunks = [];
+            let offset = 0;
+            while (offset < sortedEntries.length) {
+                chunks.push(sortedEntries.slice(offset, offset + ROWS_PER_PAGE));
+                offset += ROWS_PER_PAGE;
+            }
+
+            const totalDocPages = chunks.length || 1;
+
+            bodyHtml = chunks.map((chunkItems, cIdx) => {
+                const pageNo = cIdx + 1;
+                const globalStartIndex = cIdx * ROWS_PER_PAGE;
+                const rowsHtml = chunkItems.map((tx, idx) => getPdfRowHtml(tx, globalStartIndex + idx)).join('');
+
+                return `
+                    <div class="print-sheet-block" style="page-break-after: always; break-after: page; box-sizing: border-box; padding-bottom: 6px;">
+                        ${cIdx === 0 ? `
+                            <div class="header" style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 8px; margin-bottom: 12px;">
+                                <div>
+                                    <h2 style="margin: 0; color: #6D28D9; font-size: 18px;">Given Moi Ledger (நாம் செய்த மொய் பட்டியல்)</h2>
+                                </div>
+                            </div>
+
+                            <div class="summary-box" style="background: #F3F4F6; padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 14px; border: 1px solid #E5E7EB; display: flex; gap: 18px;">
+                                <div class="summary-item">Filtered Total Given: <span class="summary-val" style="color: #7C3AED; font-size: 14px; font-weight: 800;">₹ ${filteredGivenCash.toLocaleString('en-IN')}</span></div>
+                                <div class="summary-item">Total Given Overall: <span class="summary-val" style="color: #6D28D9; font-size: 14px; font-weight: 800;">₹ ${totalGivenCash.toLocaleString('en-IN')}</span></div>
+                                <div class="summary-item">Entries: <strong>${sortedEntries.length}</strong></div>
+                            </div>
+                        ` : `
+                            <div style="border-bottom: 1px solid #E5E7EB; padding-bottom: 6px; margin-bottom: 10px; font-size: 12px; font-weight: 700; color: #6D28D9;">
+                                Given Moi Ledger (நாம் செய்த மொய் பட்டியல் - தொடர்ச்சி)
+                            </div>
+                        `}
+
+                        <div>
+                            <table style="width: 100%; border-collapse: collapse;">
+                                <thead>
+                                    ${getPdfHeaderHtml()}
+                                </thead>
+                                <tbody>
+                                    ${rowsHtml}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        <div class="sheet-explicit-footer" style="margin-top: 14px; border-top: 2px solid #7C3AED; padding-top: 6px; display: flex; justify-content: space-between; align-items: center; background: #FFF;">
+                            <span style="font-weight: 800; color: #6D28D9; font-size: 11px;">Given Moi Ledger</span>
+                            <span style="font-size: 13px; font-weight: 900; color: #111827; background: #F3F4F6; padding: 3px 12px; border-radius: 6px; border: 1px solid #CBD5E1;">
+                                பக்கம் ${pageNo} / ${totalDocPages}
+                            </span>
+                        </div>
+                    </div>
+                `;
+            }).join('');
         }
 
         printWindow.document.write(`
@@ -361,18 +622,17 @@ export const GivenMoiEntryView = ({
             <head>
                 <title>Given Moi Ledger Report</title>
                 <style>
-                    @page { size: A4; margin: 15mm; }
-                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 10px; color: #111827; }
+                    @page { size: A4; margin: 10mm 10mm 10mm 30mm; }
+                    body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; padding: 0; margin: 0; color: #111827; }
                     .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #7C3AED; padding-bottom: 10px; margin-bottom: 14px; }
                     h2 { margin: 0; color: #6D28D9; font-size: 18px; }
-                    .meta { font-size: 11px; color: #6B7280; margin-top: 3px; }
                     .summary-box { background: #F3F4F6; padding: 10px 14px; border-radius: 8px; font-size: 12px; margin-bottom: 16px; border: 1px solid #E5E7EB; display: flex; gap: 18px; }
                     .summary-item { font-weight: 600; }
-                    .summary-val { color: #7C3AED; font-size: 14px; font-weight: 800; }
+                    .summary-val { color: #059669; font-size: 14px; font-weight: 800; }
                     table { width: 100%; border-collapse: collapse; margin-top: 6px; }
                     th { background: #7C3AED; color: white; padding: 8px; font-size: 10px; text-transform: uppercase; border: 1px solid #6D28D9; letter-spacing: 0.5px; }
                     tr:nth-child(even) { background-color: #F9FAFB; }
-                    .village-page { width: 100%; box-sizing: border-box; }
+                    .print-sheet-block { width: 100%; box-sizing: border-box; }
                 </style>
             </head>
             <body>
@@ -388,7 +648,15 @@ export const GivenMoiEntryView = ({
         printWindow.document.close();
     };
 
-    const activeFilterCount = (searchQuery ? 1 : 0) + (selectedVillage ? 1 : 0) + (amountRange !== 'all' ? 1 : 0) + (groupBy !== 'none' ? 1 : 0);
+    const activeFilterCount = (searchQuery ? 1 : 0) +
+        (selectedVillage ? 1 : 0) +
+        (selectedOccasion !== 'all' && selectedOccasion ? 1 : 0) +
+        (selectedGiftType !== 'all' && selectedGiftType ? 1 : 0) +
+        (selectedTerm !== 'all' && selectedTerm ? 1 : 0) +
+        (amountOp !== 'all' && amountOp ? 1 : 0) +
+        (amountVal || minAmount || maxAmount ? 1 : 0) +
+        (notesQuery ? 1 : 0) +
+        (groupBy !== 'none' ? 1 : 0);
 
     return (
         <div className="view-content fade-in">
@@ -421,6 +689,23 @@ export const GivenMoiEntryView = ({
                                 className="search-input-sm"
                             />
                         </div>
+                                        {/* Column Show/Hide Dropdown */}
+                        <ColumnToggleDropdown
+                            columns={GIVEN_MOI_COLUMNS}
+                            visibleColumns={visibleColumns}
+                            onChange={handleVisibleColumnsChange}
+                        />
+
+                        {/* Filter Toggle Button */}
+                        <button
+                            className={`modern-btn btn-filter-toggle ${isFilterExpanded ? 'active-filter' : ''}`}
+                            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
+                        >
+                            <Filter size={15} />
+                            <span>Column Filters</span>
+                            {activeFilterCount > 0 && <span className="active-count-badge">{activeFilterCount}</span>}
+                            {isFilterExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+                        </button>
 
                         {/* Export Excel */}
                         <button className="modern-btn btn-export-excel" onClick={handleExportExcel} title="Export to Excel">
@@ -430,17 +715,6 @@ export const GivenMoiEntryView = ({
                         {/* Export PDF */}
                         <button className="modern-btn btn-export-pdf" onClick={handleExportPDF} title="Print PDF">
                             <Printer size={15} /> PDF
-                        </button>
-
-                        {/* Filter Toggle */}
-                        <button
-                            className={`modern-btn btn-filter-toggle ${isFilterExpanded ? 'active-filter' : ''}`}
-                            onClick={() => setIsFilterExpanded(!isFilterExpanded)}
-                        >
-                            <Filter size={15} />
-                            <span>Filters</span>
-                            {activeFilterCount > 0 && <span className="active-count-badge">{activeFilterCount}</span>}
-                            {isFilterExpanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
                         </button>
 
                         {/* Bulk Load Button */}
@@ -464,13 +738,27 @@ export const GivenMoiEntryView = ({
                     </div>
                 </div>
 
-                {/* 🔍 EXPANDABLE FILTER DRAWER 🔍 */}
+                {/* 🔍 EXPANDABLE COLUMN FILTER DRAWER 🔍 */}
                 {isFilterExpanded && (
                     <div className="advanced-filter-drawer mt-3 pt-3 border-t">
-                        <div className="filter-drawer-grid">
+                        <div className="filter-drawer-header flex-align justify-between mb-3 pb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#A78BFA', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Filter size={14} /> Advanced Column Filters (வடிகட்டி & விருப்பங்கள்)
+                            </span>
+                            <button 
+                                type="button"
+                                onClick={() => setIsFilterExpanded(false)}
+                                style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                                title="Collapse Filter Panel"
+                            >
+                                <ChevronUp size={14} /> Collapse (சுருக்குக)
+                            </button>
+                        </div>
+                        <div className="filter-drawer-grid" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(200px, 1fr))', gap: '12px' }}>
+                            {/* 1. Name Filter */}
                             <div className="filter-field-group">
                                 <label className="filter-field-label flex-align">
-                                    <Search size={13} className="text-purple" /> Search Keyword (பெயர் / ஊர்)
+                                    <Search size={13} className="text-purple" /> Recipient Name (பெயர்)
                                 </label>
                                 <TransliteratedInput
                                     value={searchQuery}
@@ -483,8 +771,9 @@ export const GivenMoiEntryView = ({
                                 />
                             </div>
 
+                            {/* 2. Village Filter */}
                             <div className="filter-field-group">
-                                <label className="filter-field-label">Filter by Village (ஊர்)</label>
+                                <label className="filter-field-label">Village (ஊர்)</label>
                                 <select
                                     className="modern-control-sm"
                                     value={selectedVillage}
@@ -500,24 +789,138 @@ export const GivenMoiEntryView = ({
                                 </select>
                             </div>
 
+                            {/* 3. Occasion Filter */}
                             <div className="filter-field-group">
-                                <label className="filter-field-label">Amount Range (தொகை வரம்பு)</label>
+                                <label className="filter-field-label">Occasion (சுபநிகழ்ச்சி)</label>
                                 <select
                                     className="modern-control-sm"
-                                    value={amountRange}
+                                    value={selectedOccasion}
                                     onChange={(e) => {
-                                        setAmountRange(e.target.value);
+                                        setSelectedOccasion(e.target.value);
                                         setCurrentPage(1);
                                     }}
                                 >
-                                    <option value="all">All Amount Slabs</option>
-                                    <option value="<500">Less than ₹500</option>
-                                    <option value="501-2000">₹501 - ₹2,000</option>
-                                    <option value="2001-5000">₹2,001 - ₹5,000</option>
-                                    <option value=">5000">Above ₹5,000</option>
+                                    <option value="all">All Occasions</option>
+                                    {uniqueOccasions.map((occ) => (
+                                        <option key={occ} value={occ}>{occ}</option>
+                                    ))}
                                 </select>
                             </div>
 
+                            {/* 4. Gift Type Filter */}
+                            <div className="filter-field-group">
+                                <label className="filter-field-label">Gift Type (மொய் வகை)</label>
+                                <select
+                                    className="modern-control-sm"
+                                    value={selectedGiftType}
+                                    onChange={(e) => {
+                                        setSelectedGiftType(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <option value="all">All Gift Types</option>
+                                    <option value="Cash">Cash Gift (பண மொய்)</option>
+                                    <option value="Gold">Gold Gift (பொன் மொய்)</option>
+                                </select>
+                            </div>
+
+                            {/* 5. Gift Term Filter */}
+                            <div className="filter-field-group">
+                                <label className="filter-field-label">Gift Term (முறை)</label>
+                                <select
+                                    className="modern-control-sm"
+                                    value={selectedTerm}
+                                    onChange={(e) => {
+                                        setSelectedTerm(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <option value="all">All Terms</option>
+                                    <option value="1st Time">1st Time</option>
+                                    <option value="2nd Time">2nd Time</option>
+                                    <option value="3rd Time">3rd Time</option>
+                                    {uniqueTerms.filter(t => !['1st Time', '2nd Time', '3rd Time'].includes(t)).map(t => (
+                                        <option key={t} value={t}>{t}</option>
+                                    ))}
+                                </select>
+                            </div>
+
+                            {/* 6. Mathematical Amount Operator Selector */}
+                            <div className="filter-field-group">
+                                <label className="filter-field-label">Amount Math Filter (தொகை கணிதம்)</label>
+                                <select
+                                    className="modern-control-sm"
+                                    value={amountOp}
+                                    onChange={(e) => {
+                                        setAmountOp(e.target.value);
+                                        setCurrentPage(1);
+                                    }}
+                                >
+                                    <option value="all">All Amounts (அனைத்தும்)</option>
+                                    <option value="=">= Equal to (சமம்)</option>
+                                    <option value=">">&gt; Greater than (அதிகம்)</option>
+                                    <option value=">=">&gt;= Greater than or Equal (அதிகம்/சமம்)</option>
+                                    <option value="<">&lt; Less than (குறைவு)</option>
+                                    <option value="<=">&lt;= Less than or Equal (குறைவு/சமம்)</option>
+                                    <option value="!=">!= Not Equal (சமமில்லை)</option>
+                                    <option value="between">Between Range (தொகை வரம்பு)</option>
+                                </select>
+                            </div>
+
+                            {/* 7. Amount Value (for =, >, >=, <, <=, !=) */}
+                            {amountOp !== 'all' && amountOp !== 'between' && (
+                                <div className="filter-field-group">
+                                    <label className="filter-field-label">Amount Value (தொகை ₹)</label>
+                                    <input
+                                        type="number"
+                                        className="modern-control-sm"
+                                        placeholder={`Enter amount for ${amountOp}...`}
+                                        value={amountVal}
+                                        onChange={(e) => { setAmountVal(e.target.value); setCurrentPage(1); }}
+                                    />
+                                </div>
+                            )}
+
+                            {/* 8. Between Min & Max Amount */}
+                            {amountOp === 'between' && (
+                                <>
+                                    <div className="filter-field-group">
+                                        <label className="filter-field-label">Min Amount (குறைந்த ₹)</label>
+                                        <input
+                                            type="number"
+                                            className="modern-control-sm"
+                                            placeholder="Min ₹"
+                                            value={minAmount}
+                                            onChange={(e) => { setMinAmount(e.target.value); setCurrentPage(1); }}
+                                        />
+                                    </div>
+
+                                    <div className="filter-field-group">
+                                        <label className="filter-field-label">Max Amount (அதிக ₹)</label>
+                                        <input
+                                            type="number"
+                                            className="modern-control-sm"
+                                            placeholder="Max ₹"
+                                            value={maxAmount}
+                                            onChange={(e) => { setMaxAmount(e.target.value); setCurrentPage(1); }}
+                                        />
+                                    </div>
+                                </>
+                            )}
+
+                            {/* 11. Notes Search */}
+                            <div className="filter-field-group">
+                                <label className="filter-field-label">Notes (குறிப்பு தேடல்)</label>
+                                <input
+                                    type="text"
+                                    className="modern-control-sm"
+                                    placeholder="Search notes..."
+                                    value={notesQuery}
+                                    onChange={(e) => { setNotesQuery(e.target.value); setCurrentPage(1); }}
+                                />
+                            </div>
+
+                            {/* 12. Grouping Selector */}
                             <div className="filter-field-group">
                                 <label className="filter-field-label flex-align">
                                     <Layers size={13} className="text-purple" /> Group Records By
@@ -537,73 +940,126 @@ export const GivenMoiEntryView = ({
                             </div>
                         </div>
 
+                        {/* Filter Status Summary Bar & Reset Action */}
                         <div className="filter-summary-row mt-3 flex-align justify-between">
-                            <span className="summary-text-sm">
-                                Showing <strong>{filteredEntries.length}</strong> of {givenEntries.length} entries • Filtered Subtotal: <strong className="text-purple">₹ {filteredGivenCash.toLocaleString('en-IN')}</strong>
+                            <span className="summary-text-sm" style={{ display: 'flex', flexWrap: 'wrap', gap: '0.4rem', alignItems: 'center' }}>
+                                Showing <strong>{filteredEntries.length}</strong> of {givenEntries.length} entries
+                                <span style={{ opacity: 0.3 }}>•</span>
+                                <span>கொடுத்த தொகை: <strong className="text-purple">₹ {filteredGivenCash.toLocaleString('en-IN')}</strong></span>
                             </span>
 
-                            <button className="reset-btn-sm" onClick={handleResetFilters}>
-                                <RotateCcw size={13} /> Reset Filters
-                            </button>
+                            <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                <button className="reset-btn-sm" onClick={handleResetFilters}>
+                                    <RotateCcw size={13} /> Reset Filters
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsFilterExpanded(false)}
+                                    style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                                    title="Collapse Filter Panel"
+                                >
+                                    <ChevronUp size={14} /> Collapse Filters (சுருக்குக)
+                                </button>
+                            </div>
                         </div>
                     </div>
                 )}
             </div>
 
             {/* 📋 TABLE VIEW 📋 */}
-            <div className="full-width-card glass-card">
+            <div className="full-width-card glass-card table-card">
                 <div className="table-responsive">
                     <table className="custom-table modern-table compact-table">
                         <thead>
                             <tr>
-                                <th className="text-left">
-                                    <div className="th-bilingual">
-                                        <span className="th-en">Recipient Name</span>
-                                        <span className="th-ta">பெயர்</span>
-                                    </div>
-                                </th>
-                                <th className="text-left">
-                                    <div className="th-bilingual">
-                                        <span className="th-en">Village</span>
-                                        <span className="th-ta">ஊர்</span>
-                                    </div>
-                                </th>
-                                <th className="text-left">
-                                    <div className="th-bilingual">
-                                        <span className="th-en">Occasion / Function</span>
-                                        <span className="th-ta">சுபநிகழ்ச்சி</span>
-                                    </div>
-                                </th>
-                                <th className="text-center">
-                                    <div className="th-bilingual center">
-                                        <span className="th-en">Gift Term</span>
-                                        <span className="th-ta">முறை</span>
-                                    </div>
-                                </th>
-                                <th className="text-right">
-                                    <div className="th-bilingual right">
-                                        <span className="th-en">Given Amount</span>
-                                        <span className="th-ta">நாம் கொடுத்த தொகை ₹</span>
-                                    </div>
-                                </th>
-                                <th className="text-right">
-                                    <div className="th-bilingual right">
-                                        <span className="th-en">Given Date</span>
-                                        <span className="th-ta">கொடுத்த தேதி</span>
-                                    </div>
-                                </th>
-                                <th className="text-center">
-                                    <div className="th-bilingual center">
-                                        <span className="th-en">Actions</span>
-                                        <span className="th-ta">செயல்கள்</span>
-                                    </div>
-                                </th>
+                                {visibleColumns.recipientName !== false && (
+                                    <SortableTh
+                                        field="recipientName"
+                                        sortField={sortField}
+                                        sortDirection={sortDirection}
+                                        onSort={handleSort}
+                                        labelEn="Recipient Name"
+                                        labelTa="பெயர்"
+                                        align="left"
+                                    />
+                                )}
+                                {visibleColumns.village !== false && (
+                                    <SortableTh
+                                        field="village"
+                                        sortField={sortField}
+                                        sortDirection={sortDirection}
+                                        onSort={handleSort}
+                                        labelEn="Village"
+                                        labelTa="ஊர்"
+                                        align="left"
+                                    />
+                                )}
+                                {visibleColumns.occasion !== false && (
+                                    <SortableTh
+                                        field="occasion"
+                                        sortField={sortField}
+                                        sortDirection={sortDirection}
+                                        onSort={handleSort}
+                                        labelEn="Occasion / Function"
+                                        labelTa="சுபநிகழ்ச்சி"
+                                        align="left"
+                                    />
+                                )}
+                                {visibleColumns.giftTerm !== false && (
+                                    <SortableTh
+                                        field="giftTerm"
+                                        sortField={sortField}
+                                        sortDirection={sortDirection}
+                                        onSort={handleSort}
+                                        labelEn="Gift Term"
+                                        labelTa="முறை"
+                                        align="center"
+                                    />
+                                )}
+                                {visibleColumns.amount !== false && (
+                                    <SortableTh
+                                        field="amount"
+                                        sortField={sortField}
+                                        sortDirection={sortDirection}
+                                        onSort={handleSort}
+                                        labelEn="Given Amount"
+                                        labelTa="நாம் கொடுத்த தொகை ₹"
+                                        align="right"
+                                    />
+                                )}
+                                {visibleColumns.givenDate !== false && (
+                                    <SortableTh
+                                        field="givenDate"
+                                        sortField={sortField}
+                                        sortDirection={sortDirection}
+                                        onSort={handleSort}
+                                        labelEn="Given Date"
+                                        labelTa="கொடுத்த தேதி"
+                                        align="right"
+                                    />
+                                )}
+                                {visibleColumns.notes !== false && (
+                                    <th className="text-left">
+                                        <div className="th-bilingual">
+                                            <span className="th-en">Notes</span>
+                                            <span className="th-ta">குறிப்பு</span>
+                                        </div>
+                                    </th>
+                                )}
+                                {visibleColumns.actions !== false && (
+                                    <th className="text-center">
+                                        <div className="th-bilingual center">
+                                            <span className="th-en">Actions</span>
+                                            <span className="th-ta">செயல்கள்</span>
+                                        </div>
+                                    </th>
+                                )}
                             </tr>
                         </thead>
                         <tbody>
                             {filteredEntries.length === 0 ? (
                                 <tr>
-                                    <td colSpan="7" className="text-center text-muted py-6">
+                                    <td colSpan={Object.values(visibleColumns).filter(Boolean).length} className="text-center text-muted py-6">
                                         No given gifts match your filters. Click <strong>Record Given Gift</strong> to add your first entry!
                                     </td>
                                 </tr>
@@ -611,7 +1067,7 @@ export const GivenMoiEntryView = ({
                                 groupedData.map((group) => (
                                     <React.Fragment key={group.key}>
                                         <tr className="group-header-row">
-                                            <td colSpan="7">
+                                            <td colSpan={Object.values(visibleColumns).filter(Boolean).length}>
                                                 <div className="group-title-bar">
                                                     <span className="group-name">
                                                         <MapPin size={14} className="text-purple" />
@@ -625,51 +1081,54 @@ export const GivenMoiEntryView = ({
                                         </tr>
                                         {group.items.map((tx) => (
                                             <tr key={tx.id} className="table-row-hover grouped-item-row">
-                                                <td className="text-left font-semibold pl-6">
-                                                    <div>{tx.recipientName}</div>
-                                                    {tx.giftType === 'Gold' ? (
-                                                        <div className="text-xs text-gold flex-align mt-1">
-                                                            <Coins size={12} /> <span className="gold-detail-cell">{tx.goldDetails || 'Gold Gift'}</span>
-                                                        </div>
-                                                    ) : (
-                                                        <div className="text-xs text-purple flex-align mt-1">
-                                                            <IndianRupee size={12} /> <span>Cash Gift</span>
-                                                        </div>
-                                                    )}
-                                                </td>
-                                                <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>
-                                                <td className="text-left">{tx.occasion || '-'}</td>
-                                                <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>
-                                                <td className="text-right amount-col text-purple">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>
-                                                <td className="text-right text-muted text-xs">
-                                                    {new Date(tx.givenDate).toLocaleDateString('en-IN')}
-                                                </td>
-                                                <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
-                                                    <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
-                                                        {canEdit && (
-                                                            <button
-                                                                title="Edit Entry"
-                                                                onClick={() => handleEdit(tx)}
-                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(139,92,246,0.35)', background: 'rgba(139,92,246,0.14)', color: '#A78BFA', transition: 'all 0.18s ease' }}
-                                                                onMouseEnter={e => { e.currentTarget.style.background = '#8B5CF6'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.45)'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.14)'; e.currentTarget.style.color = '#A78BFA'; e.currentTarget.style.boxShadow = 'none'; }}
-                                                            >
-                                                                <Edit2 size={12} /> Edit
-                                                            </button>
+                                                {visibleColumns.recipientName !== false && (
+                                                    <td className="text-left font-semibold pl-6">
+                                                        <div>{tx.recipientName}</div>
+                                                        {tx.giftType === 'Gold' ? (
+                                                            <div className="text-xs text-gold flex-align mt-1">
+                                                                <Coins size={12} /> <span className="gold-detail-cell">{tx.goldDetails || 'Gold Gift'}</span>
+                                                            </div>
+                                                        ) : (
+                                                            <div className="text-xs text-purple flex-align mt-1">
+                                                                <IndianRupee size={12} /> <span>Cash Gift</span>
+                                                            </div>
                                                         )}
-                                                        {canDelete && (
-                                                            <button
-                                                                title="Delete Entry"
-                                                                onClick={() => onDeleteGivenMoi && onDeleteGivenMoi(tx.id)}
-                                                                style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.14)', color: '#FB7185', transition: 'all 0.18s ease' }}
-                                                                onMouseEnter={e => { e.currentTarget.style.background = '#F43F5E'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(244,63,94,0.45)'; }}
-                                                                onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.14)'; e.currentTarget.style.color = '#FB7185'; e.currentTarget.style.boxShadow = 'none'; }}
-                                                            >
-                                                                <Trash2 size={12} /> Delete
-                                                            </button>
-                                                        )}
-                                                    </div>
-                                                </td>
+                                                    </td>
+                                                )}
+                                                {visibleColumns.village !== false && <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>}
+                                                {visibleColumns.occasion !== false && <td className="text-left">{tx.occasion || '-'}</td>}
+                                                {visibleColumns.giftTerm !== false && <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>}
+                                                {visibleColumns.amount !== false && <td className="text-right amount-col text-purple">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>}
+                                                {visibleColumns.givenDate !== false && (
+                                                    <td className="text-right text-muted text-xs">
+                                                        {new Date(tx.givenDate).toLocaleDateString('en-IN')}
+                                                    </td>
+                                                )}
+                                                {visibleColumns.notes !== false && <td className="text-left text-xs">{tx.notes || '-'}</td>}
+                                                {visibleColumns.actions !== false && (
+                                                    <td className="text-center" style={{ whiteSpace: 'nowrap', width: '85px' }}>
+                                                        <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                                                            {canEdit && (
+                                                                <button
+                                                                    title="Edit Entry (திருத்து)"
+                                                                    onClick={() => handleEdit(tx)}
+                                                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(139,92,246,0.35)', background: 'rgba(139,92,246,0.14)', color: '#A78BFA', transition: 'all 0.18s ease' }}
+                                                                >
+                                                                    <Edit2 size={14} />
+                                                                </button>
+                                                            )}
+                                                            {canDelete && (
+                                                                <button
+                                                                    title="Delete Entry (நீக்கு)"
+                                                                    onClick={() => onDeleteGivenMoi && onDeleteGivenMoi(tx.id)}
+                                                                    style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.14)', color: '#FB7185', transition: 'all 0.18s ease' }}
+                                                                >
+                                                                    <Trash2 size={14} />
+                                                                </button>
+                                                            )}
+                                                        </div>
+                                                    </td>
+                                                )}
                                             </tr>
                                         ))}
                                     </React.Fragment>
@@ -677,51 +1136,54 @@ export const GivenMoiEntryView = ({
                             ) : (
                                 paginatedEntries.map((tx) => (
                                     <tr key={tx.id} className="table-row-hover">
-                                        <td className="text-left font-semibold">
-                                            <div>{tx.recipientName}</div>
-                                            {tx.giftType === 'Gold' ? (
-                                                <div className="text-xs text-gold flex-align mt-1">
-                                                    <Coins size={12} /> <span className="gold-detail-cell">{tx.goldDetails || 'Gold Gift'}</span>
-                                                </div>
-                                            ) : (
-                                                <div className="text-xs text-purple flex-align mt-1">
-                                                    <IndianRupee size={12} /> <span>Cash Gift</span>
-                                                </div>
-                                            )}
-                                        </td>
-                                        <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>
-                                        <td className="text-left">{tx.occasion || '-'}</td>
-                                        <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>
-                                        <td className="text-right amount-col text-purple">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>
-                                        <td className="text-right text-muted text-xs">
-                                            {new Date(tx.givenDate).toLocaleDateString('en-IN')}
-                                        </td>
-                                        <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
-                                                {canEdit && (
-                                                    <button
-                                                        title="Edit Entry"
-                                                        onClick={() => handleEdit(tx)}
-                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(139,92,246,0.35)', background: 'rgba(139,92,246,0.14)', color: '#A78BFA', transition: 'all 0.18s ease' }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = '#8B5CF6'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.45)'; }}
-                                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.14)'; e.currentTarget.style.color = '#A78BFA'; e.currentTarget.style.boxShadow = 'none'; }}
-                                                    >
-                                                        <Edit2 size={12} /> Edit
-                                                    </button>
+                                        {visibleColumns.recipientName !== false && (
+                                            <td className="text-left font-semibold">
+                                                <div>{tx.recipientName}</div>
+                                                {tx.giftType === 'Gold' ? (
+                                                    <div className="text-xs text-gold flex-align mt-1">
+                                                        <Coins size={12} /> <span className="gold-detail-cell">{tx.goldDetails || 'Gold Gift'}</span>
+                                                    </div>
+                                                ) : (
+                                                    <div className="text-xs text-purple flex-align mt-1">
+                                                        <IndianRupee size={12} /> <span>Cash Gift</span>
+                                                    </div>
                                                 )}
-                                                {canDelete && (
-                                                    <button
-                                                        title="Delete Entry"
-                                                        onClick={() => onDeleteGivenMoi && onDeleteGivenMoi(tx.id)}
-                                                        style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.14)', color: '#FB7185', transition: 'all 0.18s ease' }}
-                                                        onMouseEnter={e => { e.currentTarget.style.background = '#F43F5E'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(244,63,94,0.45)'; }}
-                                                        onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.14)'; e.currentTarget.style.color = '#FB7185'; e.currentTarget.style.boxShadow = 'none'; }}
-                                                    >
-                                                        <Trash2 size={12} /> Delete
-                                                    </button>
-                                                )}
-                                            </div>
-                                        </td>
+                                            </td>
+                                        )}
+                                        {visibleColumns.village !== false && <td className="text-left"><span className="badge-village">{tx.village || '-'}</span></td>}
+                                        {visibleColumns.occasion !== false && <td className="text-left">{tx.occasion || '-'}</td>}
+                                        {visibleColumns.giftTerm !== false && <td className="text-center"><span className="badge-term-tag">{tx.giftTerm || '1st Time'}</span></td>}
+                                        {visibleColumns.amount !== false && <td className="text-right amount-col text-purple">₹ {Number(tx.amount).toLocaleString('en-IN')}</td>}
+                                        {visibleColumns.givenDate !== false && (
+                                            <td className="text-right text-muted text-xs">
+                                                {new Date(tx.givenDate).toLocaleDateString('en-IN')}
+                                            </td>
+                                        )}
+                                        {visibleColumns.notes !== false && <td className="text-left text-xs">{tx.notes || '-'}</td>}
+                                        {visibleColumns.actions !== false && (
+                                            <td className="text-center" style={{ whiteSpace: 'nowrap', width: '85px' }}>
+                                                <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
+                                                    {canEdit && (
+                                                        <button
+                                                            title="Edit Entry (திருத்து)"
+                                                            onClick={() => handleEdit(tx)}
+                                                            style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', width: '30px', height: '30px', borderRadius: '8px', cursor: 'pointer', border: '1px solid rgba(139,92,246,0.35)', background: 'rgba(139,92,246,0.14)', color: '#A78BFA', transition: 'all 0.18s ease' }}
+                                                        >
+                                                            <Edit2 size={14} />
+                                                        </button>
+                                                    )}
+                                                    {canDelete && (
+                                                        <button
+                                                            title="Delete Entry"
+                                                            onClick={() => onDeleteGivenMoi && onDeleteGivenMoi(tx.id)}
+                                                            style={{ display: 'inline-flex', alignItems: 'center', gap: '0.3rem', padding: '0.3rem 0.65rem', borderRadius: '8px', fontSize: '0.72rem', fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(244,63,94,0.35)', background: 'rgba(244,63,94,0.14)', color: '#FB7185', transition: 'all 0.18s ease' }}
+                                                        >
+                                                            <Trash2 size={12} /> Delete
+                                                        </button>
+                                                    )}
+                                                </div>
+                                            </td>
+                                        )}
                                     </tr>
                                 ))
                             )}

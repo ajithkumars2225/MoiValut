@@ -322,7 +322,7 @@ export const ConflictRecordsView = ({ conflictRecords, onDeleteConflict, privile
         printWindow.document.write(`
             <!DOCTYPE html><html><head><title>Conflict Records Report</title>
             <style>
-                @page{size:A4 landscape;margin:12mm}
+                @page{size:A4 landscape;margin:10mm 10mm 10mm 30mm}
                 body{font-family:'Segoe UI',sans-serif;color:#111827}
                 h2{color:#8B5CF6;margin:0 0 4px}
                 .meta{font-size:11px;color:#6B7280;margin-bottom:12px}
@@ -412,6 +412,19 @@ export const ConflictRecordsView = ({ conflictRecords, onDeleteConflict, privile
 
                 {isFilterExpanded && (
                     <div className="advanced-filter-drawer mt-3 pt-3 border-t">
+                        <div className="filter-drawer-header flex-align justify-between mb-3 pb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#A78BFA', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Filter size={14} /> Conflict Filters (வடிகட்டி)
+                            </span>
+                            <button 
+                                type="button"
+                                onClick={() => setIsFilterExpanded(false)}
+                                style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                                title="Collapse Filter Panel"
+                            >
+                                <ChevronUp size={14} /> Collapse (சுருக்குக)
+                            </button>
+                        </div>
                         <div className="filter-drawer-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                             <div className="filter-field-group">
                                 <label className="filter-field-label">Search Name / Village</label>
@@ -429,10 +442,17 @@ export const ConflictRecordsView = ({ conflictRecords, onDeleteConflict, privile
                                     <option value="NoPreviousRecord">❓ No Previous Record</option>
                                 </select>
                             </div>
-                            <div className="filter-field-group" style={{ justifyContent: 'flex-end' }}>
-                                <label className="filter-field-label">&nbsp;</label>
+                            <div className="filter-field-group" style={{ justifyContent: 'flex-end', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' }}>
                                 <button className="reset-btn-sm" onClick={() => { setSearchQuery(''); setStatusFilter('all'); setCurrentPage(1); }}>
                                     <RotateCcw size={13} /> Reset
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsFilterExpanded(false)}
+                                    style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                                    title="Collapse Filter Panel"
+                                >
+                                    <ChevronUp size={14} /> Collapse Filters (சுருக்குக)
                                 </button>
                             </div>
                         </div>

@@ -8,6 +8,7 @@ public class MoiTransaction
 
     public string? GiftTerm { get; set; }
     public decimal? ReturnAmount { get; set; }
+    public string? Notes { get; set; }
 
     public long EventId { get; set; }
     public Event Event { get; set; } = null!;

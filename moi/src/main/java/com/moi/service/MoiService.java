@@ -29,16 +29,29 @@ public class MoiService {
         this.moiTransactionRepository = moiTransactionRepository;
         this.jdbcTemplate = jdbcTemplate;
         
-        // Migration: Drop notes column from main and event tables
+        // Migration: Ensure return_amount, gift_term, and notes columns exist in main table
         try {
-            jdbcTemplate.execute("ALTER TABLE moi_transactions DROP COLUMN notes");
+            jdbcTemplate.execute("ALTER TABLE moi_transactions ADD COLUMN return_amount DECIMAL(19, 2)");
+        } catch (Exception ignored) {}
+        try {
+            jdbcTemplate.execute("ALTER TABLE moi_transactions ADD COLUMN gift_term VARCHAR(255)");
+        } catch (Exception ignored) {}
+        try {
+            jdbcTemplate.execute("ALTER TABLE moi_transactions ADD COLUMN notes TEXT");
         } catch (Exception ignored) {}
         
+        // Migration: Ensure return_amount, gift_term, and notes columns exist in dynamic event tables
         try {
             List<String> tables = jdbcTemplate.queryForList("SHOW TABLES LIKE 'event_%'", String.class);
             for (String table : tables) {
                 try {
-                    jdbcTemplate.execute("ALTER TABLE `" + table + "` DROP COLUMN notes");
+                    jdbcTemplate.execute("ALTER TABLE `" + table + "` ADD COLUMN return_amount DECIMAL(19, 2)");
+                } catch (Exception ignored) {}
+                try {
+                    jdbcTemplate.execute("ALTER TABLE `" + table + "` ADD COLUMN gift_term VARCHAR(255)");
+                } catch (Exception ignored) {}
+                try {
+                    jdbcTemplate.execute("ALTER TABLE `" + table + "` ADD COLUMN notes TEXT");
                 } catch (Exception ignored) {}
             }
         } catch (Exception ignored) {}
@@ -65,6 +78,9 @@ public class MoiService {
                 "contributor_name VARCHAR(255), " +
                 "village VARCHAR(255), " +
                 "amount DECIMAL(19, 2), " +
+                "return_amount DECIMAL(19, 2), " +
+                "gift_term VARCHAR(255), " +
+                "notes TEXT, " +
                 "transaction_date DATETIME" +
                 ")";
         
@@ -97,6 +113,9 @@ public class MoiService {
 
         MoiTransaction transaction = new MoiTransaction();
         transaction.setAmount(request.getAmount());
+        transaction.setReturnAmount(request.getReturnAmount());
+        transaction.setGiftTerm(request.getGiftTerm());
+        transaction.setNotes(request.getNotes());
         transaction.setTransactionDate(LocalDateTime.now());
         transaction.setEvent(event);
         transaction.setContributor(contributor);
@@ -105,8 +124,8 @@ public class MoiService {
 
         // Record in specific event table
         String tableName = getEventTableName(event);
-        String insertSql = "INSERT INTO `" + tableName + "` (main_transaction_id, contributor_name, village, amount, transaction_date) VALUES (?, ?, ?, ?, ?)";
-        jdbcTemplate.update(insertSql, savedTransaction.getId(), contributor.getName(), contributor.getVillage(), savedTransaction.getAmount(), savedTransaction.getTransactionDate());
+        String insertSql = "INSERT INTO `" + tableName + "` (main_transaction_id, contributor_name, village, amount, return_amount, gift_term, notes, transaction_date) VALUES (?, ?, ?, ?, ?, ?, ?, ?)";
+        jdbcTemplate.update(insertSql, savedTransaction.getId(), contributor.getName(), contributor.getVillage(), savedTransaction.getAmount(), savedTransaction.getReturnAmount(), savedTransaction.getGiftTerm(), savedTransaction.getNotes(), savedTransaction.getTransactionDate());
         
         // Get serial number from event table
         Long serialNo = jdbcTemplate.queryForObject("SELECT id FROM `" + tableName + "` WHERE main_transaction_id = ?", Long.class, savedTransaction.getId());
@@ -117,6 +136,9 @@ public class MoiService {
                 .contributorName(contributor.getName())
                 .village(contributor.getVillage())
                 .amount(savedTransaction.getAmount())
+                .returnAmount(savedTransaction.getReturnAmount())
+                .giftTerm(savedTransaction.getGiftTerm())
+                .notes(savedTransaction.getNotes())
                 .transactionDate(savedTransaction.getTransactionDate())
                 .eventId(event.getId())
                 .build();
@@ -132,12 +154,15 @@ public class MoiService {
         contributorRepository.save(tx.getContributor());
         
         tx.setAmount(request.getAmount());
+        tx.setReturnAmount(request.getReturnAmount());
+        tx.setGiftTerm(request.getGiftTerm());
+        tx.setNotes(request.getNotes());
         moiTransactionRepository.save(tx);
 
         // Update in specific event table
         String tableName = getEventTableName(tx.getEvent());
-        String updateSql = "UPDATE `" + tableName + "` SET contributor_name = ?, village = ?, amount = ? WHERE main_transaction_id = ?";
-        jdbcTemplate.update(updateSql, request.getContributorName(), request.getVillage(), request.getAmount(), transactionId);
+        String updateSql = "UPDATE `" + tableName + "` SET contributor_name = ?, village = ?, amount = ?, return_amount = ?, gift_term = ?, notes = ? WHERE main_transaction_id = ?";
+        jdbcTemplate.update(updateSql, request.getContributorName(), request.getVillage(), request.getAmount(), request.getReturnAmount(), request.getGiftTerm(), request.getNotes(), transactionId);
         
         // Get serial number
         Long serialNo = jdbcTemplate.queryForObject("SELECT id FROM `" + tableName + "` WHERE main_transaction_id = ?", Long.class, transactionId);
@@ -148,6 +173,9 @@ public class MoiService {
                 .contributorName(tx.getContributor().getName())
                 .village(tx.getContributor().getVillage())
                 .amount(tx.getAmount())
+                .returnAmount(tx.getReturnAmount())
+                .giftTerm(tx.getGiftTerm())
+                .notes(tx.getNotes())
                 .transactionDate(tx.getTransactionDate())
                 .eventId(tx.getEvent().getId())
                 .build();
@@ -169,15 +197,32 @@ public class MoiService {
         
         // For new system, we fetch from the event-specific table to get correct serial number (id)
         try {
-            return jdbcTemplate.query("SELECT * FROM `" + tableName + "` ORDER BY id", (rs, rowNum) -> MoiResponse.builder()
+            return jdbcTemplate.query("SELECT * FROM `" + tableName + "` ORDER BY id", (rs, rowNum) -> {
+                java.sql.Timestamp ts = rs.getTimestamp("transaction_date");
+                LocalDateTime tdt = ts != null ? ts.toLocalDateTime() : LocalDateTime.now();
+                
+                BigDecimal retAmt = null;
+                try { retAmt = rs.getBigDecimal("return_amount"); } catch (Exception ignored) {}
+
+                String term = null;
+                try { term = rs.getString("gift_term"); } catch (Exception ignored) {}
+
+                String notesStr = null;
+                try { notesStr = rs.getString("notes"); } catch (Exception ignored) {}
+
+                return MoiResponse.builder()
                         .transactionId(rs.getLong("main_transaction_id"))
                         .serialNumber(rs.getLong("id"))
                         .contributorName(rs.getString("contributor_name"))
                         .village(rs.getString("village"))
                         .amount(rs.getBigDecimal("amount"))
-                        .transactionDate(rs.getTimestamp("transaction_date").toLocalDateTime())
+                        .returnAmount(retAmt)
+                        .giftTerm(term)
+                        .notes(notesStr)
+                        .transactionDate(tdt)
                         .eventId(eventId)
-                        .build());
+                        .build();
+            });
         } catch (Exception e) {
             // Fallback to main table if event table doesn't exist yet (for legacy)
             return moiTransactionRepository.findByEventId(eventId).stream()
@@ -187,6 +232,9 @@ public class MoiService {
                         .contributorName(tx.getContributor().getName())
                         .village(tx.getContributor().getVillage())
                         .amount(tx.getAmount())
+                        .returnAmount(tx.getReturnAmount())
+                        .giftTerm(tx.getGiftTerm())
+                        .notes(tx.getNotes())
                         .transactionDate(tx.getTransactionDate())
                         .eventId(tx.getEvent().getId())
                         .build())
@@ -202,6 +250,9 @@ public class MoiService {
                         .contributorName(tx.getContributor().getName())
                         .village(tx.getContributor().getVillage())
                         .amount(tx.getAmount())
+                        .returnAmount(tx.getReturnAmount())
+                        .giftTerm(tx.getGiftTerm())
+                        .notes(tx.getNotes())
                         .transactionDate(tx.getTransactionDate())
                         .eventId(tx.getEvent().getId())
                         .build())

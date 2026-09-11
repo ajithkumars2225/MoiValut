@@ -298,15 +298,40 @@ export const api = {
 
     // Moi Transactions (Received Cash)
     getTransactionsByEvent: async (eventId) => {
+        const cacheKey = `cache_transactions_event_${eventId}`;
+        const existingCache = getCache(cacheKey, []);
+        const cacheMap = new Map();
+        existingCache.forEach(t => {
+            const id = t.transactionId || t.id;
+            if (id) cacheMap.set(String(id), t);
+        });
+
         try {
             if (!navigator.onLine) throw new TypeError('Offline');
             const res = await fetch(`${BASE_URL}/moi/event/${eventId}`);
             if (!res.ok) throw new Error('Failed to fetch transactions');
             const data = await res.json();
-            setCache(`cache_transactions_event_${eventId}`, data);
-            return data;
+            
+            // Merge cached frontend fields (returnAmount, giftTerm, notes) with backend list
+            const merged = data.map(item => {
+                const id = String(item.transactionId || item.id || '');
+                const cachedItem = cacheMap.get(id);
+                return {
+                    giftTerm: '1st Time',
+                    returnAmount: 0,
+                    notes: '',
+                    ...cachedItem,
+                    ...item,
+                    returnAmount: item.returnAmount !== undefined ? item.returnAmount : (cachedItem?.returnAmount || 0),
+                    giftTerm: item.giftTerm || cachedItem?.giftTerm || '1st Time',
+                    notes: item.notes || cachedItem?.notes || ''
+                };
+            });
+
+            setCache(cacheKey, merged);
+            return merged;
         } catch {
-            return getCache(`cache_transactions_event_${eventId}`, []);
+            return existingCache;
         }
     },
 
@@ -346,11 +371,21 @@ export const api = {
             });
             if (!res.ok) throw new Error('Failed to record transaction');
             const saved = await res.json();
-            applyLocalUpdate('CREATE_MOI', saved);
-            return saved;
+            const fullSaved = {
+                giftTerm: '1st Time',
+                returnAmount: 0,
+                notes: '',
+                ...data,
+                ...saved
+            };
+            applyLocalUpdate('CREATE_MOI', fullSaved);
+            return fullSaved;
         } catch {
             const tempId = 'temp-moi-' + Date.now();
             const mockSaved = {
+                giftTerm: '1st Time',
+                returnAmount: 0,
+                notes: '',
                 ...data,
                 transactionId: tempId,
                 id: tempId,
@@ -373,8 +408,15 @@ export const api = {
             });
             if (!res.ok) throw new Error('Failed to update transaction');
             const saved = await res.json();
-            applyLocalUpdate('UPDATE_MOI', saved, id);
-            return saved;
+            const fullSaved = {
+                giftTerm: '1st Time',
+                returnAmount: 0,
+                notes: '',
+                ...data,
+                ...saved
+            };
+            applyLocalUpdate('UPDATE_MOI', fullSaved, id);
+            return fullSaved;
         } catch {
             const mockSaved = { ...data, transactionId: id, id };
             addToSyncQueue('UPDATE_MOI', mockSaved, id);

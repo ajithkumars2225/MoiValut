@@ -1,6 +1,6 @@
 import React, { useState } from 'react';
 import { Lock, User, Key, ShieldCheck, ArrowRight, AlertCircle, Sparkles, Eye, EyeOff } from 'lucide-react';
-import { validateLogin, setCurrentUser } from '../services/userManager';
+import { validateLoginApi, setCurrentUser } from '../services/userManager';
 
 export const LoginView = ({ onLoginSuccess }) => {
     const [username, setUsername] = useState('');
@@ -9,25 +9,22 @@ export const LoginView = ({ onLoginSuccess }) => {
     const [error, setError]       = useState('');
     const [loading, setLoading]   = useState(false);
 
-    const handleSubmit = (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
         setLoading(true);
         setError('');
 
-        // Small delay for UX feel
-        setTimeout(() => {
-            const user = validateLogin(username.trim(), password);
-            if (user) {
-                setCurrentUser(user);
-                sessionStorage.setItem('isLoggedIn', 'true');
-                sessionStorage.setItem('loggedInUser', user.username);
-                onLoginSuccess(user);
-            } else {
-                setError('தவறான பயனர் பெயர் அல்லது கடவுச்சொல். / Invalid username or password.');
-                setPassword('');
-            }
-            setLoading(false);
-        }, 400);
+        const user = await validateLoginApi(username.trim(), password);
+        if (user) {
+            setCurrentUser(user);
+            sessionStorage.setItem('isLoggedIn', 'true');
+            sessionStorage.setItem('loggedInUser', user.username);
+            onLoginSuccess(user);
+        } else {
+            setError('தவறான பயனர் பெயர் அல்லது கடவுச்சொல். / Invalid username or password.');
+            setPassword('');
+        }
+        setLoading(false);
     };
 
     return (

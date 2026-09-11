@@ -9,4 +9,5 @@ public class MoiRequest
 
     public string? GiftTerm { get; set; }
     public decimal? ReturnAmount { get; set; }
+    public string? Notes { get; set; }
 }

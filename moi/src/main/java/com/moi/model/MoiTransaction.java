@@ -25,6 +25,15 @@ public class MoiTransaction {
     @Column(name = "transaction_date")
     private LocalDateTime transactionDate;
 
+    @Column(name = "return_amount")
+    private BigDecimal returnAmount;
+
+    @Column(name = "gift_term")
+    private String giftTerm;
+
+    @Column(name = "notes", columnDefinition = "TEXT")
+    private String notes;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "event_id", nullable = false)
     private Event event;

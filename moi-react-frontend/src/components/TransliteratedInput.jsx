@@ -262,10 +262,10 @@ export const TransliteratedInput = ({
             return;
         }
 
-        // 2. Try to fetch from Google Input Tools online
+        // 2. Try to fetch from Google Input Tools via local proxy (avoids CORS)
         try {
             if (navigator.onLine) {
-                const url = `https://inputtools.google.com/request?text=${encodeURIComponent(word)}&itc=ta-t-i0-und&num=5&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
+                const url = `/api/translit?text=${encodeURIComponent(word)}&itc=ta-t-i0-und&num=5&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
                 const res = await fetch(url);
                 const data = await res.json();
 
@@ -281,7 +281,7 @@ export const TransliteratedInput = ({
                 }
             }
         } catch (e) {
-            console.warn('Online transliteration failed, falling back to local dictionaries', e);
+            console.warn('Google transliteration proxy failed, falling back to local dictionaries', e);
         }
 
         // 3. Offline fallback using dynamically harvested prefixes + static dictionary + phonetic rules

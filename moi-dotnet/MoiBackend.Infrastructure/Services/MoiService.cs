@@ -82,6 +82,7 @@ public class MoiService : IMoiService
             Amount = request.Amount,
             GiftTerm = request.GiftTerm,
             ReturnAmount = request.ReturnAmount,
+            Notes = request.Notes,
             TransactionDate = DateTime.UtcNow,
             EventId = evt.Id,
             ContributorId = contributor.Id
@@ -103,6 +104,7 @@ public class MoiService : IMoiService
             Amount = transaction.Amount,
             GiftTerm = transaction.GiftTerm,
             ReturnAmount = transaction.ReturnAmount,
+            Notes = transaction.Notes,
             TransactionDate = transaction.TransactionDate,
             EventId = evt.Id
         };
@@ -120,6 +122,7 @@ public class MoiService : IMoiService
         tx.Amount = request.Amount;
         tx.GiftTerm = request.GiftTerm;
         tx.ReturnAmount = request.ReturnAmount;
+        tx.Notes = request.Notes;
 
         await _dbContext.SaveChangesAsync();
 
@@ -136,6 +139,7 @@ public class MoiService : IMoiService
             Amount = tx.Amount,
             GiftTerm = tx.GiftTerm,
             ReturnAmount = tx.ReturnAmount,
+            Notes = tx.Notes,
             TransactionDate = tx.TransactionDate,
             EventId = tx.EventId
         };
@@ -177,6 +181,7 @@ public class MoiService : IMoiService
             Amount = tx.Amount,
             GiftTerm = tx.GiftTerm,
             ReturnAmount = tx.ReturnAmount,
+            Notes = tx.Notes,
             TransactionDate = tx.TransactionDate,
             EventId = tx.EventId
         }).ToList();
@@ -199,6 +204,7 @@ public class MoiService : IMoiService
             Amount = tx.Amount,
             GiftTerm = tx.GiftTerm,
             ReturnAmount = tx.ReturnAmount,
+            Notes = tx.Notes,
             TransactionDate = tx.TransactionDate,
             EventId = tx.EventId
         }).ToList();

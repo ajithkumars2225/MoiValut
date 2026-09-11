@@ -66,7 +66,6 @@ export const GivenMoiModal = ({ isOpen, onClose, onSave, editingEntry, eventId }
     const handleSubmit = async (e) => {
         e.preventDefault();
         if (!recipientName.trim()) { alert('Please enter recipient name (பெயர்).'); return; }
-        if (!amount || Number(amount) <= 0) { alert('Please enter a valid gift amount (தொகை).'); return; }
         if (giftType === 'Gold' && !goldDetails.trim()) { alert('Please enter gold details (பொன் விபரம்).'); return; }
 
         const finalOccasion = occasion === 'மற்றவை (Other)' ? (customOccasion || 'மற்றவை') : occasion;
@@ -81,7 +80,7 @@ export const GivenMoiModal = ({ isOpen, onClose, onSave, editingEntry, eventId }
                 goldDetails: giftType === 'Gold' ? goldDetails.trim() : '',
                 occasion: finalOccasion,
                 giftTerm,
-                amount: Number(amount),
+                amount: amount ? Number(amount) : 0,
                 givenDate: new Date(givenDate).toISOString(),
                 notes: notes.trim(),
                 eventId: eventId || null,
@@ -196,16 +195,14 @@ export const GivenMoiModal = ({ isOpen, onClose, onSave, editingEntry, eventId }
                     <div className="hyper-field">
                         <label className="field-label">
                             {giftType === 'Gold' ? 'Gold Equivalent Value (பொன் மதிப்பு ₹)' : 'Gift Amount (நாம் கொடுத்த தொகை ₹)'}
-                            <span className="req"> *</span>
                         </label>
                         <div className="input-with-symbol">
                             <span className="symbol-badge">₹</span>
                             <input type="number" className="hyper-input with-indent"
                                 value={amount}
                                 onChange={(e) => setAmount(e.target.value)}
-                                placeholder="e.g. 1001" min="1" required />
+                                placeholder="e.g. 1001 (optional)" min="0" />
                         </div>
-
                     </div>
 
                     {/* Date & Notes */}

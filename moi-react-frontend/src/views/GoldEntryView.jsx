@@ -219,7 +219,7 @@ export const GoldEntryView = ({
         printWindow.document.write(`
             <!DOCTYPE html><html><head><title>Gold Gifts Ledger - ${event.name}</title>
             <style>
-                @page{size:A4 portrait;margin:12mm}
+                @page{size:A4 portrait;margin:10mm 10mm 10mm 30mm}
                 body{font-family:'Segoe UI',sans-serif;color:#111827}
                 h2{color:#D97706;margin:0 0 4px}
                 .meta{font-size:11px;color:#6B7280;margin-bottom:12px}
@@ -344,6 +344,19 @@ export const GoldEntryView = ({
                 {/* Advanced Filter Drawer */}
                 {isFilterExpanded && (
                     <div className="advanced-filter-drawer mt-3 pt-3 border-t">
+                        <div className="filter-drawer-header flex-align justify-between mb-3 pb-2 border-b" style={{ borderColor: 'rgba(255,255,255,0.08)' }}>
+                            <span style={{ fontSize: '13px', fontWeight: 600, color: '#A78BFA', display: 'flex', alignItems: 'center', gap: '6px' }}>
+                                <Filter size={14} /> Gold Filters & Options (வடிகட்டி)
+                            </span>
+                            <button 
+                                type="button"
+                                onClick={() => setIsFilterExpanded(false)}
+                                style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '4px 10px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                                title="Collapse Filter Panel"
+                            >
+                                <ChevronUp size={14} /> Collapse (சுருக்குக)
+                            </button>
+                        </div>
                         <div className="filter-drawer-grid" style={{ gridTemplateColumns: 'repeat(3, 1fr)' }}>
                             <div className="filter-field-group">
                                 <label className="filter-field-label">Filter by Village (ஊர்)</label>
@@ -368,10 +381,17 @@ export const GoldEntryView = ({
                                     <option value="date_asc">Oldest First</option>
                                 </select>
                             </div>
-                            <div className="filter-field-group" style={{ justifyContent: 'flex-end' }}>
-                                <label className="filter-field-label">&nbsp;</label>
+                            <div className="filter-field-group" style={{ justifyContent: 'flex-end', flexDirection: 'row', alignItems: 'flex-end', gap: '8px' }}>
                                 <button className="reset-btn-sm" onClick={handleResetFilters}>
                                     <RotateCcw size={13} /> Reset Filters
+                                </button>
+                                <button 
+                                    type="button"
+                                    onClick={() => setIsFilterExpanded(false)}
+                                    style={{ background: 'rgba(239, 68, 68, 0.12)', color: '#F87171', border: '1px solid rgba(239, 68, 68, 0.3)', borderRadius: '6px', padding: '5px 12px', fontSize: '12px', cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '4px', fontWeight: 500 }}
+                                    title="Collapse Filter Panel"
+                                >
+                                    <ChevronUp size={14} /> Collapse Filters (சுருக்குக)
                                 </button>
                             </div>
                         </div>
@@ -431,55 +451,55 @@ export const GoldEntryView = ({
                                                 hour: '2-digit', minute: '2-digit', hour12: true
                                             })}
                                         </td>
-                                        <td className="text-center" style={{ whiteSpace: 'nowrap' }}>
-                                            <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '0.4rem' }}>
+                                        <td className="text-center" style={{ whiteSpace: 'nowrap', width: '110px' }}>
+                                            <div style={{ display: 'inline-flex', alignItems: 'center', justifyContent: 'center', gap: '0.35rem' }}>
                                                 <button
-                                                    title="Print Receipt"
+                                                    title="Print Receipt (ரசீது அச்சிடு)"
                                                     onClick={() => setSelectedReceipt(ge)}
                                                     style={{
-                                                        display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                                                        padding: '0.32rem 0.7rem', borderRadius: '8px', fontSize: '0.72rem',
-                                                        fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(99,102,241,0.35)',
+                                                        display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                        width: '30px', height: '30px', borderRadius: '8px',
+                                                        cursor: 'pointer', border: '1px solid rgba(99,102,241,0.35)',
                                                         background: 'rgba(99,102,241,0.14)', color: '#818CF8',
                                                         transition: 'all 0.18s ease',
                                                     }}
                                                     onMouseEnter={e => { e.currentTarget.style.background = '#6366F1'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(99,102,241,0.45)'; }}
                                                     onMouseLeave={e => { e.currentTarget.style.background = 'rgba(99,102,241,0.14)'; e.currentTarget.style.color = '#818CF8'; e.currentTarget.style.boxShadow = 'none'; }}
                                                 >
-                                                    <Printer size={12} /> Print
+                                                    <Printer size={14} />
                                                 </button>
                                                 {canEdit && (
                                                     <button
-                                                        title="Edit Entry"
+                                                        title="Edit Gold Gift (திருத்து)"
                                                         onClick={() => handleOpenEdit(ge)}
                                                         style={{
-                                                            display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                                                            padding: '0.32rem 0.7rem', borderRadius: '8px', fontSize: '0.72rem',
-                                                            fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(139,92,246,0.35)',
+                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                            width: '30px', height: '30px', borderRadius: '8px',
+                                                            cursor: 'pointer', border: '1px solid rgba(139,92,246,0.35)',
                                                             background: 'rgba(139,92,246,0.14)', color: '#A78BFA',
                                                             transition: 'all 0.18s ease',
                                                         }}
                                                         onMouseEnter={e => { e.currentTarget.style.background = '#8B5CF6'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(139,92,246,0.45)'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(139,92,246,0.14)'; e.currentTarget.style.color = '#A78BFA'; e.currentTarget.style.boxShadow = 'none'; }}
                                                     >
-                                                        <Edit2 size={12} /> Edit
+                                                        <Edit2 size={14} />
                                                     </button>
                                                 )}
                                                 {canDelete && (
                                                     <button
-                                                        title="Delete Entry"
+                                                        title="Delete Gold Gift (நீக்கு)"
                                                         onClick={() => onDeleteGold(ge.id)}
                                                         style={{
-                                                            display: 'inline-flex', alignItems: 'center', gap: '0.3rem',
-                                                            padding: '0.32rem 0.7rem', borderRadius: '8px', fontSize: '0.72rem',
-                                                            fontWeight: 700, cursor: 'pointer', border: '1px solid rgba(244,63,94,0.35)',
+                                                            display: 'inline-flex', alignItems: 'center', justifyContent: 'center',
+                                                            width: '30px', height: '30px', borderRadius: '8px',
+                                                            cursor: 'pointer', border: '1px solid rgba(244,63,94,0.35)',
                                                             background: 'rgba(244,63,94,0.14)', color: '#FB7185',
                                                             transition: 'all 0.18s ease',
                                                         }}
                                                         onMouseEnter={e => { e.currentTarget.style.background = '#F43F5E'; e.currentTarget.style.color = '#FFF'; e.currentTarget.style.boxShadow = '0 4px 12px rgba(244,63,94,0.45)'; }}
                                                         onMouseLeave={e => { e.currentTarget.style.background = 'rgba(244,63,94,0.14)'; e.currentTarget.style.color = '#FB7185'; e.currentTarget.style.boxShadow = 'none'; }}
                                                     >
-                                                        <Trash2 size={12} /> Delete
+                                                        <Trash2 size={14} />
                                                     </button>
                                                 )}
                                             </div>

@@ -91,10 +91,34 @@ export const deleteUser = (id) => {
 };
 
 /**
- * Validate login credentials.
- * Returns user object (with privileges) on success, null on failure.
- * Built-in Admin is hardcoded and always has full privileges.
+ * Validate login credentials via real .NET Backend API endpoint (/api/auth/login).
  */
+export const validateLoginApi = async (username, password) => {
+    try {
+        const response = await fetch('http://localhost:8080/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ username, password })
+        });
+        if (response.ok) {
+            const data = await response.json();
+            const u = data.user;
+            return {
+                id: u.id,
+                username: u.username,
+                fullName: u.fullName || u.username,
+                role: u.role || 'user',
+                privileges: u.role === 'admin' ? ADMIN_PRIVILEGES : buildEmptyPrivileges(),
+            };
+        }
+    } catch (err) {
+        console.warn('Backend Auth API unavailable, falling back to local check', err);
+    }
+
+    // Fallback to local check
+    return validateLogin(username, password);
+};
+
 export const validateLogin = (username, password) => {
     // Built-in Admin
     if (username === 'Admin' && password === 'Admin@123') {

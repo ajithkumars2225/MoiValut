@@ -2,12 +2,26 @@ import React, { useState, useRef } from 'react';
 import { Upload, FileText, Download, X, AlertCircle, CheckCircle2, Play } from 'lucide-react';
 import { offlinePhoneticTranslate, BUILT_IN_DICT } from '../TransliteratedInput';
 
-const INITIALS_MAP = {
-    'a': 'ஆ', 'aa': 'ஆ', 'b': 'பி', 'c': 'சி', 'd': 'டி', 'e': 'இ',
-    'f': 'எப்', 'g': 'ஜி', 'h': 'ஹெச்', 'i': 'ஐ', 'j': 'ஜே', 'k': 'கே',
-    'l': 'எல்', 'm': 'எம்', 'n': 'என்', 'o': 'ஓ', 'p': 'பி', 'q': 'கியூ',
-    'r': 'ஆர்', 's': 'எஸ்', 't': 'டி', 'u': 'யு', 'v': 'வி', 'w': 'டபிள்யூ',
-    'x': 'எக்ஸ்', 'y': 'ஒய்', 'z': 'இசட்', 'vai': 'வை'
+const MULTI_INITIALS_MAP = {
+    'aa': 'ஆ',
+    'vai': 'வை',
+    'se': 'செ',
+    'sa': 'சா',
+    'tha': 'த',
+    'ta': 'த',
+    'ks': 'கே.எஸ்',
+    'kr': 'கே.ஆர்',
+    'sk': 'எஸ்.கே',
+    'sr': 'எஸ்.ஆர்',
+    'mj': 'எம்.ஜே',
+    'mr': 'எம்.ஆர்',
+    'ms': 'எம்.எஸ்',
+    'vr': 'வி.ஆர்',
+    'vs': 'வி.எஸ்',
+    'sp': 'எஸ்.பி',
+    'tr': 'டி.ஆர்',
+    'ts': 'டி.எஸ்',
+    'am': 'ஆ'
 };
 
 const VILLAGE_SUFFIXES = {
@@ -44,22 +58,63 @@ const VILLAGE_SUFFIXES = {
     'ptty': 'ப்பட்டி'
 };
 
+const processInitialsAndBody = (fullName) => {
+    if (!fullName) return { initialsPrefix: '', mainBody: '', isAlreadyTamil: false };
+    
+    const str = fullName.trim();
+    // Match leading initials like "C.", "M. ", "VAI.", "AA. "
+    const match = str.match(/^((?:[A-Za-z]{1,4}(?:\s*\.|\s+))+)(.*)$/);
+
+    if (match) {
+        let rawInitials = match[1].trim();
+        let rawBody = match[2].trim();
+
+        if (rawBody) {
+            const initialBlocks = rawInitials.split(/[.\s]+/).filter(b => b.length > 0);
+            const processed = initialBlocks.map(block => {
+                const clean = block.trim();
+                const lower = clean.toLowerCase();
+
+                // Single-letter initial -> KEEP IN ENGLISH UPPERCASE (e.g. C., M.)
+                if (clean.length === 1) {
+                    return clean.toUpperCase() + '.';
+                }
+                // 2+ letter initial -> Translate to Tamil (e.g. AA. -> ஆ., VAI. -> வை., SE. -> செ.)
+                if (clean.length >= 2) {
+                    if (MULTI_INITIALS_MAP[lower]) return MULTI_INITIALS_MAP[lower] + '.';
+                    return offlinePhoneticTranslate(clean) + '.';
+                }
+                return clean + '.';
+            });
+
+            return {
+                initialsPrefix: processed.join(' ') + ' ',
+                mainBody: rawBody,
+                isAlreadyTamil: !/[a-zA-Z]/.test(rawBody)
+            };
+        }
+    }
+
+    return { initialsPrefix: '', mainBody: str, isAlreadyTamil: !/[a-zA-Z]/.test(str) };
+};
+
 const translateFullNameToTamil = (fullName) => {
     if (!fullName) return "";
     
-    // Only translate if it contains English letters
-    if (!/[a-zA-Z]/.test(fullName)) {
-        return fullName;
+    // Process initials rule: 1-letter initials stay English, 2+ letter initials translate to Tamil
+    const { initialsPrefix, mainBody, isAlreadyTamil } = processInitialsAndBody(fullName);
+    if (isAlreadyTamil) {
+        return initialsPrefix + mainBody;
     }
 
     // Check exact match in static dictionary first (e.g. multi-word villages like "keela mettuppatty")
-    const normalizedFull = fullName.trim().toLowerCase().replace(/\s+/g, ' ');
-    if (BUILT_IN_DICT[normalizedFull]) {
-        return BUILT_IN_DICT[normalizedFull];
+    const normalizedBody = mainBody.trim().toLowerCase().replace(/\s+/g, ' ');
+    if (BUILT_IN_DICT[normalizedBody]) {
+        return initialsPrefix + BUILT_IN_DICT[normalizedBody];
     }
 
-    // Split by dot or space to preserve initials separators
-    const parts = fullName.split(/([.\s]+)/);
+    // Split body by space
+    const parts = mainBody.split(/([.\s]+)/);
     
     const translatedParts = parts.map(part => {
         if (/^[.\s]+$/.test(part)) {
@@ -69,12 +124,10 @@ const translateFullNameToTamil = (fullName) => {
         const lowercaseWord = part.toLowerCase().trim();
         if (!lowercaseWord) return part;
 
-        // Check exact match in static dictionary (like single words)
         if (BUILT_IN_DICT[lowercaseWord]) {
             return BUILT_IN_DICT[lowercaseWord];
         }
 
-        // Check if it matches a common village suffix ending
         for (const [engSuffix, tamSuffix] of Object.entries(VILLAGE_SUFFIXES)) {
             if (lowercaseWord.endsWith(engSuffix) && lowercaseWord.length > engSuffix.length) {
                 const prefixPart = lowercaseWord.substring(0, lowercaseWord.length - engSuffix.length);
@@ -83,12 +136,6 @@ const translateFullNameToTamil = (fullName) => {
             }
         }
 
-        // Check if it is a single-letter or known initials map entry (like AA or VAI)
-        if (INITIALS_MAP[lowercaseWord]) {
-            return INITIALS_MAP[lowercaseWord];
-        }
-        
-        // Check exact match in dynamic translit cache in localStorage
         try {
             const cachedList = JSON.parse(localStorage.getItem('translit_' + lowercaseWord));
             if (cachedList && cachedList[0]) {
@@ -96,11 +143,53 @@ const translateFullNameToTamil = (fullName) => {
             }
         } catch {}
         
-        // Use syllable mapping fallback
         return offlinePhoneticTranslate(part);
     });
     
-    return translatedParts.join('');
+    return initialsPrefix + translatedParts.join('');
+};
+
+export const translateFullNameToTamilAsync = async (fullName) => {
+    if (!fullName) return "";
+
+    const { initialsPrefix, mainBody, isAlreadyTamil } = processInitialsAndBody(fullName);
+    if (isAlreadyTamil) {
+        return initialsPrefix + mainBody;
+    }
+
+    const normalizedBody = mainBody.trim().toLowerCase().replace(/\s+/g, ' ');
+    
+    // 1. Check local cache / dict first
+    if (BUILT_IN_DICT[normalizedBody]) return initialsPrefix + BUILT_IN_DICT[normalizedBody];
+
+    try {
+        const cached = localStorage.getItem('translit_' + normalizedBody);
+        if (cached) {
+            const list = JSON.parse(cached);
+            if (list && list[0]) return initialsPrefix + list[0];
+        }
+    } catch {}
+
+    // 2. Fetch Google Transliteration via proxy for main body if online
+    try {
+        if (navigator.onLine) {
+            const url = `/api/translit?text=${encodeURIComponent(mainBody)}&itc=ta-t-i0-und&num=1&cp=0&cs=1&ie=utf-8&oe=utf-8&app=demopage`;
+            const res = await fetch(url);
+            const data = await res.json();
+            if (data[0] === 'SUCCESS' && data[1]?.[0]?.[1]?.[0]) {
+                const googleRes = data[1][0][1][0];
+                try {
+                    localStorage.setItem('translit_' + normalizedBody, JSON.stringify([googleRes]));
+                } catch {}
+                return initialsPrefix + googleRes;
+            }
+        }
+    } catch (e) {
+        console.warn("Google translit fetch failed, using fallback:", e);
+    }
+
+    // 3. Fallback to synchronous translation
+    return initialsPrefix + translateFullNameToTamil(mainBody);
 };
 
 export const BulkUploadModal = ({ isOpen, onClose, onImport, templateType }) => {
@@ -135,54 +224,57 @@ export const BulkUploadModal = ({ isOpen, onClose, onImport, templateType }) => 
     };
 
     // Helper: Parse full CSV content
-    const parseCSVContent = (text) => {
-        const lines = text.split(/\r?\n/).map(l => l.trim()).filter(line => line !== '');
+    const parseCSVContent = async (text) => {
+        // Strip BOM (\uFEFF) if present at start of text
+        const cleanText = text.replace(/^\uFEFF/, '');
+        const lines = cleanText.split(/\r?\n/).map(l => l.trim()).filter(line => line !== '');
         if (lines.length === 0) return { headers: [], rows: [] };
         
-        const rawHeaders = parseCSVLine(lines[0]).map(h => h.trim().toLowerCase());
+        const rawHeaders = parseCSVLine(lines[0]).map(h => h.trim().replace(/^\uFEFF/, '').replace(/["']/g, '').toLowerCase());
         const rows = [];
         
         // Map headers to normalize both English and Tamil inputs
         const headerMapping = {};
         rawHeaders.forEach((h, idx) => {
-            // Contributor / Recipient Name mapping
-            if (h === 'name' || h === 'பெயர்' || h === 'நபர்' || h === 'contributorname' || h === 'recipientname') {
+            const cleanH = h.replace(/[^a-z0-9\u0B80-\u0BFF]/g, '');
+            // 1. Contributor / Recipient Name mapping
+            if (cleanH.includes('name') || cleanH.includes('contributor') || cleanH.includes('recipient') || cleanH.includes('பெயர்') || cleanH.includes('நபர்')) {
                 headerMapping.name = idx;
             }
-            // Village mapping
-            else if (h === 'village' || h === 'ஊர்' || h === 'கிராமம்') {
+            // 2. Village mapping
+            else if (cleanH.includes('village') || cleanH.includes('ஊர்') || cleanH.includes('கிராமம்')) {
                 headerMapping.village = idx;
             }
-            // Amount mapping
-            else if (h === 'amount' || h === 'தொகை' || h === 'பணம்') {
-                headerMapping.amount = idx;
-            }
-            // Gift term mapping
-            else if (h === 'giftterm' || h === 'term' || h === 'முறை' || h === 'தடவை') {
-                headerMapping.giftTerm = idx;
-            }
-            // Return amount mapping (for Inbound received moi)
-            else if (h === 'returnamount' || h === 'திரும்பச்செய்தது' || h === 'திரும்ப செய்த தொகை') {
+            // 3. Return Amount mapping MUST be checked BEFORE main Amount check!
+            else if (cleanH.includes('return') || cleanH.includes('prevreturn') || cleanH.includes('திரும்ப')) {
                 headerMapping.returnAmount = idx;
             }
-            // Gift Type mapping (for Outbound given moi: Cash or Gold)
-            else if (h === 'gifttype' || h === 'type' || h === 'வகை') {
+            // 4. Main Gift Amount mapping
+            else if (cleanH.includes('amount') || cleanH.includes('தொகை') || cleanH.includes('பணம்')) {
+                headerMapping.amount = idx;
+            }
+            // 5. Gift term mapping
+            else if (cleanH.includes('term') || cleanH.includes('giftterm') || cleanH.includes('முறை') || cleanH.includes('தடவை')) {
+                headerMapping.giftTerm = idx;
+            }
+            // 6. Gift Type mapping (for Outbound given moi: Cash or Gold)
+            else if (cleanH.includes('type') || cleanH.includes('gifttype') || cleanH.includes('வகை')) {
                 headerMapping.giftType = idx;
             }
-            // Gold Details mapping (for Outbound given gold details)
-            else if (h === 'golddetails' || h === 'பொன்விவரம்' || h === 'நகையளவு') {
+            // 7. Gold Details mapping (for Outbound given gold details)
+            else if (cleanH.includes('gold') || cleanH.includes('பொன்') || cleanH.includes('நகை')) {
                 headerMapping.goldDetails = idx;
             }
-            // Occasion mapping
-            else if (h === 'occasion' || h === 'சுபநிகழ்ச்சி' || h === 'நிகழ்ச்சி') {
+            // 8. Occasion mapping
+            else if (cleanH.includes('occasion') || cleanH.includes('நிகழ்ச்சி')) {
                 headerMapping.occasion = idx;
             }
-            // Given Date mapping
-            else if (h === 'givendate' || h === 'date' || h === 'தேதி') {
+            // 9. Given Date mapping
+            else if (cleanH.includes('date') || cleanH.includes('தேதி')) {
                 headerMapping.givenDate = idx;
             }
-            // Notes mapping
-            else if (h === 'notes' || h === 'குறிப்பு' || h === 'குறிப்புகள்') {
+            // 10. Notes mapping
+            else if (cleanH.includes('note') || cleanH.includes('குறிப்பு')) {
                 headerMapping.notes = idx;
             }
         });
@@ -199,20 +291,24 @@ export const BulkUploadModal = ({ isOpen, onClose, onImport, templateType }) => 
             const rawName = headerMapping.name !== undefined ? values[headerMapping.name]?.trim() : '';
             const rawVillage = headerMapping.village !== undefined ? values[headerMapping.village]?.trim() : '';
             
-            rawRow.name = translateFullNameToTamil(rawName);
-            rawRow.village = translateFullNameToTamil(rawVillage);
-            rawRow.amount = headerMapping.amount !== undefined ? values[headerMapping.amount]?.trim() : '0';
-            rawRow.giftTerm = headerMapping.giftTerm !== undefined ? values[headerMapping.giftTerm]?.trim() : '1st Time';
-            rawRow.notes = headerMapping.notes !== undefined ? values[headerMapping.notes]?.trim() : '';
+            rawRow.name = await translateFullNameToTamilAsync(rawName);
+            rawRow.village = await translateFullNameToTamilAsync(rawVillage);
+            
+            const rawAmountStr = headerMapping.amount !== undefined ? values[headerMapping.amount]?.trim() || '0' : '0';
+            rawRow.amount = rawAmountStr.replace(/[^0-9.]/g, '') || '0';
+            
+            rawRow.giftTerm = headerMapping.giftTerm !== undefined ? values[headerMapping.giftTerm]?.trim() || '1st Time' : '1st Time';
+            rawRow.notes = headerMapping.notes !== undefined ? values[headerMapping.notes]?.trim() || '' : '';
 
             // Type-specific field extractions
             if (templateType === 'moi') {
-                rawRow.returnAmount = headerMapping.returnAmount !== undefined ? values[headerMapping.returnAmount]?.trim() : '0';
+                const rawReturnStr = headerMapping.returnAmount !== undefined ? values[headerMapping.returnAmount]?.trim() || '0' : '0';
+                rawRow.returnAmount = rawReturnStr.replace(/[^0-9.]/g, '') || '0';
             } else {
-                rawRow.giftType = headerMapping.giftType !== undefined ? values[headerMapping.giftType]?.trim() : 'Cash';
-                rawRow.goldDetails = headerMapping.goldDetails !== undefined ? values[headerMapping.goldDetails]?.trim() : '';
-                rawRow.occasion = headerMapping.occasion !== undefined ? values[headerMapping.occasion]?.trim() : '';
-                rawRow.givenDate = headerMapping.givenDate !== undefined ? values[headerMapping.givenDate]?.trim() : new Date().toISOString().slice(0, 10);
+                rawRow.giftType = headerMapping.giftType !== undefined ? values[headerMapping.giftType]?.trim() || 'Cash' : 'Cash';
+                rawRow.goldDetails = headerMapping.goldDetails !== undefined ? values[headerMapping.goldDetails]?.trim() || '' : '';
+                rawRow.occasion = headerMapping.occasion !== undefined ? values[headerMapping.occasion]?.trim() || '' : '';
+                rawRow.givenDate = headerMapping.givenDate !== undefined ? values[headerMapping.givenDate]?.trim() || new Date().toISOString().slice(0, 10) : new Date().toISOString().slice(0, 10);
             }
 
             // Validation logic
@@ -278,9 +374,9 @@ export const BulkUploadModal = ({ isOpen, onClose, onImport, templateType }) => 
 
         setFileData(file);
         const reader = new FileReader();
-        reader.onload = (event) => {
+        reader.onload = async (event) => {
             const text = event.target.result;
-            const parsed = parseCSVContent(text);
+            const parsed = await parseCSVContent(text);
             setParsedRows(parsed.rows);
             setValidationSummary(parsed.summary);
         };

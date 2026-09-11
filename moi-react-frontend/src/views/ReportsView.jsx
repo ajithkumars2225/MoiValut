@@ -291,7 +291,7 @@ export const ReportsView = ({ privileges }) => {
         printWindow.document.write(`
             <!DOCTYPE html><html><head><title>Audit Log Report</title>
             <style>
-                @page{size:A4 landscape;margin:12mm}
+                @page{size:A4 landscape;margin:10mm 10mm 10mm 30mm}
                 body{font-family:'Segoe UI',sans-serif;color:#111827}
                 h2{color:#8B5CF6;margin:0 0 4px}
                 .meta{font-size:11px;color:#6B7280;margin-bottom:12px}

@@ -7,5 +7,14 @@ export default defineConfig({
   server: {
     port: 3000,
     host: true,
+    proxy: {
+      // Proxy Google Input Tools API to avoid CORS issues in browser
+      '/api/translit': {
+        target: 'https://inputtools.google.com',
+        changeOrigin: true,
+        rewrite: (path) => path.replace(/^\/api\/translit/, '/request'),
+        secure: true,
+      },
+    },
   },
 })

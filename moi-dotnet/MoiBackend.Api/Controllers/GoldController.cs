@@ -22,6 +22,13 @@ public class GoldController : ControllerBase
         return Ok(response);
     }
 
+    [HttpGet]
+    public async Task<ActionResult<List<GoldEntryResponse>>> GetAllEntries()
+    {
+        var response = await _goldEntryService.GetAllEntriesByEventAsync(2);
+        return Ok(response);
+    }
+
     [HttpGet("event/{eventId}/recent")]
     public async Task<ActionResult<List<GoldEntryResponse>>> GetRecentEntries(long eventId)
     {
@@ -50,3 +57,4 @@ public class GoldController : ControllerBase
         return Ok();
     }
 }
+

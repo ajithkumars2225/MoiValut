@@ -51,6 +51,7 @@ public class MoiDbContext : DbContext
             entity.Property(t => t.TransactionDate).HasColumnName("transaction_date");
             entity.Property(t => t.GiftTerm).HasColumnName("gift_term");
             entity.Property(t => t.ReturnAmount).HasColumnName("return_amount").HasColumnType("decimal(19, 2)");
+            entity.Property(t => t.Notes).HasColumnName("notes");
             entity.Property(t => t.EventId).HasColumnName("event_id");
             entity.Property(t => t.ContributorId).HasColumnName("contributor_id");
 
@@ -127,6 +128,20 @@ public class MoiDbContext : DbContext
                 .WithMany()
                 .HasForeignKey(cr => cr.EventId)
                 .OnDelete(DeleteBehavior.SetNull);
+        });
+
+        modelBuilder.Entity<MoiBackend.Core.Models.User>(entity =>
+        {
+            entity.ToTable("users");
+            entity.HasKey(u => u.Id);
+            entity.Property(u => u.Id).HasColumnName("id");
+            entity.Property(u => u.Username).HasColumnName("username").IsRequired();
+            entity.Property(u => u.PasswordHash).HasColumnName("password_hash").IsRequired();
+            entity.Property(u => u.FullName).HasColumnName("full_name");
+            entity.Property(u => u.Role).HasColumnName("role");
+            entity.Property(u => u.PrivilegesJson).HasColumnName("privileges_json");
+            entity.Property(u => u.IsActive).HasColumnName("is_active");
+            entity.Property(u => u.CreatedAt).HasColumnName("created_at");
         });
     }
 }

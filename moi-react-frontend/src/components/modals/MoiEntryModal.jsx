@@ -150,12 +150,12 @@ export const MoiEntryModal = ({
 
     const handleSubmit = async (e) => {
         e.preventDefault();
-        if (!name.trim() || !amount) return;
+        if (!name.trim()) return;
 
         setLoading(true);
         setError('');
         try {
-            const numericAmount       = parseFloat(amount);
+            const numericAmount       = amount ? parseFloat(amount) : 0;
             const numericReturnAmount = returnAmount ? parseFloat(returnAmount) : null;
             const data = {
                 eventId,
@@ -291,17 +291,16 @@ export const MoiEntryModal = ({
                         {/* Current Gift Amount */}
                         <div className="hyper-field">
                             <label className="field-label" title="Gift Amount (இப்போ வந்த மொய் ₹)">
-                                <span>Gift Amount (இப்போ வந்த மொய் ₹)</span> <span className="req">*</span>
+                                <span>Gift Amount (இப்போ வந்த மொய் ₹)</span>
                             </label>
                             <div className="input-with-symbol">
                                 <span className="symbol-badge">₹</span>
                                 <input
-                                    type="number" step="0.01" min="1"
+                                    type="number" step="0.01" min="0"
                                     className="hyper-input with-indent"
                                     value={amount}
                                     onChange={(e) => { setAmount(e.target.value); setManualChecked(false); }}
-                                    placeholder="Enter cash amount..."
-                                    required
+                                    placeholder="Enter cash amount (optional)..."
                                 />
                             </div>
                         </div>
