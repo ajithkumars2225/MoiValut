@@ -26,19 +26,24 @@ class MoiEntryModel {
   });
 
   factory MoiEntryModel.fromJson(Map<String, dynamic> json) {
+    final rawId = json['transactionId'] ?? json['id'];
+    final rawSerial = json['serialNumber'] ?? json['serialNo'] ?? json['serial_no'];
+    final rawAmt = json['amount'];
+    final rawReturnAmt = json['returnAmount'];
+
     return MoiEntryModel(
-      id: json['transactionId'] ?? json['id'] ?? 0,
-      eventId: json['eventId'] ?? 0,
-      serialNo: json['serialNumber'] ?? json['serialNo'] ?? json['serial_no'] ?? 0,
-      contributorName: json['contributorName'] ?? json['contributor_name'] ?? json['name'] ?? '',
-      village: json['village'] ?? '',
-      amount: (json['amount'] is num) ? (json['amount'] as num).toDouble() : 0.0,
-      giftTerm: json['giftTerm'] ?? json['gift_term'],
-      prevReturnInfo: json['prevReturnInfo'] ?? json['prev_return_info'],
-      returnAmount: json['returnAmount'] != null ? (json['returnAmount'] as num).toDouble() : null,
-      notes: json['notes'],
+      id: rawId is num ? rawId.toInt() : 0,
+      eventId: json['eventId'] is num ? (json['eventId'] as num).toInt() : 0,
+      serialNo: rawSerial is num ? rawSerial.toInt() : 0,
+      contributorName: json['contributorName']?.toString() ?? json['contributor_name']?.toString() ?? json['name']?.toString() ?? '',
+      village: json['village']?.toString() ?? '',
+      amount: rawAmt is num ? rawAmt.toDouble() : 0.0,
+      giftTerm: json['giftTerm']?.toString() ?? json['gift_term']?.toString(),
+      prevReturnInfo: json['prevReturnInfo']?.toString() ?? json['prev_return_info']?.toString(),
+      returnAmount: rawReturnAmt is num ? rawReturnAmt.toDouble() : null,
+      notes: json['notes']?.toString(),
       createdAt: json['transactionDate'] != null
-          ? DateTime.tryParse(json['transactionDate']) ?? DateTime.now()
+          ? DateTime.tryParse(json['transactionDate'].toString()) ?? DateTime.now()
           : DateTime.now(),
     );
   }

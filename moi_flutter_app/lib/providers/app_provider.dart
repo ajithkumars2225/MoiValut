@@ -65,9 +65,6 @@ class AppProvider extends ChangeNotifier {
       selectedEvent = events.firstWhere((e) => e.id == 2, orElse: () => events.first);
     }
 
-    isLoading = false;
-    notifyListeners();
-
     await fetchAllDataForSelectedEvent();
   }
 
